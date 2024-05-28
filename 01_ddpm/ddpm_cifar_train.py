@@ -1,7 +1,6 @@
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, ToTensor, Lambda
 from torchvision.datasets import CIFAR10
-from torchvision.datasets.mnist import MNIST
 
 from schedulers import *
 from utils import *
