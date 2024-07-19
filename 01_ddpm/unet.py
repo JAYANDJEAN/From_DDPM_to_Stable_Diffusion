@@ -1,5 +1,3 @@
-# Import of libraries
-import random
 from utils import *
 from torch import nn, Tensor
 from typing import Optional, List
@@ -45,7 +43,7 @@ class Attention(nn.Module):
         """
         b, c, w, h = x.shape
         x = x.reshape(b, w * h, c)
-        attn_output, _ = self.attn_layer(x, x, x)
+        attn_output, attn_output_weights = self.attn_layer(x, x, x)
         return attn_output.reshape(b, c, w, h)
 
 
@@ -58,7 +56,8 @@ class Block(nn.Module):
                  out_channel: int,
                  p_dropout: float,
                  time_embed_size: int,
-                 num_classes: int):
+                 num_classes: int
+                 ):
         """
         Initialize Residual block.
         Args:
@@ -74,10 +73,9 @@ class Block(nn.Module):
         num_groups_out = find_max_num_groups(out_channel)
 
         self.conv = nn.Sequential(
-            nn.GroupNorm(num_groups_in, in_channel),  # todo
+            nn.GroupNorm(num_groups_in, in_channel),
             nn.GELU(),
             nn.Conv2d(in_channel, out_channel, 3, 1, 1),
-
             nn.GroupNorm(num_groups_out, out_channel),
             nn.GELU(),
             nn.Dropout(p_dropout),
@@ -133,7 +131,6 @@ class UNet(nn.Module):
             p_dropouts (List[float]): List of dropout probabilities for each layer.
             time_embed_size (int): Size of the time embedding.
             num_classes (int): Number of classes.
-            n_steps (int): Number of time steps.
             use_down (bool): Whether to use down sampling or not.
             use_attention (bool): Whether to use attention mechanism or not.
         """
@@ -197,49 +194,3 @@ class UNet(nn.Module):
             if self.use_down and (i != (len(self.up_blocks) - 1)):
                 h = nn.functional.interpolate(h, size=hs[-i - 1].shape[-2:], mode='nearest')
         return h
-
-
-if __name__ == '__main__':
-    batch_size = 128
-    n_step = 1000
-    n_class = 10
-    n_time_embed = 100
-    t0 = torch.randint(0, n_step, (batch_size,))
-    y0 = torch.randint(0, n_class, (batch_size,))
-    embed_c = nn.functional.one_hot(y0.squeeze(), n_class).float()
-    embed_t = torch.rand(batch_size, n_time_embed)
-
-
-    def test_unet_same_width_height():
-        """
-        Test UNet model with input tensors of the same width and height.
-        """
-        x0 = torch.rand(batch_size, 1, 28, 28)
-        unet = UNet(channels=[1, 10, 10, 20, 20, 40, 40, 64],
-                    p_dropouts=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                    time_embed_size=n_time_embed,
-                    num_classes=n_class,
-                    use_down=True,
-                    use_attention=True)
-        x_recon = unet(x0, embed_t, embed_c)
-        print(x_recon.shape)
-
-
-    def test_unet_different_width_height():
-        """
-        Test UNet model with input tensors of different width and height.
-        """
-        x0 = torch.rand(batch_size, 3, 32, 35)
-
-        unet = UNet(channels=[3, 32, 64, 128],
-                    p_dropouts=[0.0, 0.0, 0.0],
-                    time_embed_size=100,
-                    num_classes=n_class,
-                    use_down=True,
-                    use_attention=True)
-        x_recon = unet(x0, embed_t, embed_c)
-        print(x_recon.shape)
-
-
-    test_unet_different_width_height()
-    test_unet_same_width_height()

@@ -8,3 +8,7 @@ https://github.com/hkproj/pytorch-stable-diffusion/tree/main
 
 
 https://github.com/kjsman/stable-diffusion-pytorch
+
+
+
+https://github.com/Michedev/DDPMs-Pytorch/tree/master

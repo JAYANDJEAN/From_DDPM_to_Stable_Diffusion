@@ -1,0 +1,12 @@
+# The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+# with 6000 images per class. There are 50000 training images and 10000 test images.
+model_version: v1
+csv_file: ../00_assets/csv/addr_to_geo_min.csv
+geo_code_type: s2
+num_epochs: 2
+batch_size: 128
+lr: 0.0001
+beta_min: 0.9
+beta_max: 0.98
+eps: 0.000000001
+device: cpu
