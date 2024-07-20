@@ -13,13 +13,47 @@ with open('../00_assets/ddpm_mnist.yml', 'r') as file:
     config = yaml.safe_load(file)
 
 config['label'] = 8
-result_name = f"ddpm_result_with_class_8"
-gif_name = f"ddpm_with_class_8.gif"
+
+
+def training_loop():
+    mse = nn.MSELoss()
+    best_loss = float("inf")
+    optim = Adam(ddpm.parameters(), config['lr'])
+
+    for epoch in tqdm(range(config['n_epochs']), desc=f"Training progress"):
+        epoch_loss = 0.0
+        for step, batch in enumerate(tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{config['n_epochs']}")):
+            # Loading data
+            device = config['device']
+            x0 = batch[0].to(device)
+            y0 = batch[1].to(device)
+            eta = torch.randn_like(x0).to(device)
+            t = torch.randint(0, config['n_steps'], (len(x0),)).to(device)
+            noisy_img = ddpm.noisy_(x0, t, eta).to(device)
+
+            if config['with_class']:
+                pred_eta = ddpm(noisy_img, t, y0).to(device)
+            else:
+                pred_eta = ddpm(noisy_img, t, None).to(device)
+            loss = mse(pred_eta, eta)
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+            epoch_loss += loss.item() * len(x0) / len(loader)
+        log_string = f"\nLoss at epoch {epoch + 1}: {epoch_loss:.3f}"
+
+        if best_loss > epoch_loss:
+            best_loss = epoch_loss
+            torch.save(ddpm.state_dict(), config['model_path'])
+            log_string += " --> Best model ever (stored)"
+        print(log_string)
+
 
 # Data
 transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
 full_dataset = MNIST(root="../00_assets/datasets", train=True, transform=transform, download=True)
 loader = DataLoader(full_dataset, batch_size=config['batch_size'], shuffle=True)
+
 
 # # 定义数据预处理 [0, 1] -> [-1, 1]
 # transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
@@ -58,41 +92,6 @@ unet = UNet(channels=channels,
 ddpm = DDPM(unet, config['n_steps'], config['min_b'], config['max_b'], config['device']).to(config['device'])
 print(f"\nnumber of parameters: {sum([p.numel() for p in ddpm.parameters()])}")
 
-
-def training_loop():
-    mse = nn.MSELoss()
-    best_loss = float("inf")
-    optim = Adam(ddpm.parameters(), config['lr'])
-
-    for epoch in tqdm(range(config['n_epochs']), desc=f"Training progress"):
-        epoch_loss = 0.0
-        for step, batch in enumerate(tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{config['n_epochs']}")):
-            # Loading data
-            device = config['device']
-            x0 = batch[0].to(device)
-            y0 = batch[1].to(device)
-            eta = torch.randn_like(x0).to(device)
-            t = torch.randint(0, config['n_steps'], (len(x0),)).to(device)
-            noisy_img = ddpm.noisy_(x0, t, eta).to(device)
-
-            if config['with_class']:
-                pred_eta = ddpm(noisy_img, t, y0).to(device)
-            else:
-                pred_eta = ddpm(noisy_img, t, None).to(device)
-            loss = mse(pred_eta, eta)
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            epoch_loss += loss.item() * len(x0) / len(loader.dataset)
-        log_string = f"\nLoss at epoch {epoch + 1}: {epoch_loss:.3f}"
-
-        if best_loss > epoch_loss:
-            best_loss = epoch_loss
-            torch.save(ddpm.state_dict(), config['model_path'])
-            log_string += " --> Best model ever (stored)"
-        print(log_string)
-
-
 print("\nModel training.......")
 training_loop()
 
@@ -103,4 +102,4 @@ best_model.eval()
 
 print("\nGenerating images.......")
 generated = generate_new_images(ddpm=best_model, config=config)
-show_images(generated, result_name)
+show_images(generated, f"../00_assets/ddpm_{config['dt']}_class_{config['label']}.png")

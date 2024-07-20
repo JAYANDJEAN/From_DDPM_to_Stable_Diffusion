@@ -12,7 +12,6 @@ def show_images(images, title="sample"):
     """Shows the provided images as sub-pictures in a square"""
     if type(images) is torch.Tensor:
         images = images.detach().cpu().numpy()
-
     fig = plt.figure(figsize=(10, 10))
     rows = int(len(images) ** (1 / 2))
     cols = round(len(images) / rows)
@@ -39,29 +38,23 @@ def show_first_batch(loader):
 def generate_new_images(ddpm, config,
                         n_samples=100,
                         frames_per_gif=100,
-                        gif_name="sampling.gif",
                         c=1, h=28, w=28):
     """Given a DDPM model, a number of samples to be generated and a device, returns some newly generated samples"""
     frame_idxs = np.linspace(0, config['n_steps'], frames_per_gif).astype(np.uint)
     frames = []
 
     with torch.no_grad():
-
         x = torch.randn(n_samples, c, h, w).to(config['device'])
-
         for idx, t in tqdm(enumerate(list(range(config['n_steps']))[::-1])):
-
             if config['with_class']:
-                y = (torch.ones(n_samples, ) * config['label']).to(config['device'])
-                eta_theta = ddpm(x, t, y)
+                y_tensor = torch.as_tensor([config['label']] * n_samples).to(config['device'])
+                t_tensor = torch.as_tensor([t] * n_samples).to(config['device'])
+                eta_theta = ddpm(x, t_tensor, y_tensor)
             else:
-                eta_theta = ddpm(x, t, None)
-
+                eta_theta = ddpm(x, t_tensor, None)
             alpha_t = ddpm.alphas[t]
             alpha_t_hat = ddpm.alphas_hat[t]
-
             x = (1 / alpha_t.sqrt()) * (x - (1 - alpha_t) / (1 - alpha_t_hat).sqrt() * eta_theta)
-
             if t > 0:
                 z = torch.randn(n_samples, c, h, w).to(config['device'])
                 beta_t = ddpm.betas[t]
@@ -79,7 +72,7 @@ def generate_new_images(ddpm, config,
                 frames.append(frame)
 
     # Storing the gif
-    with imageio.get_writer(gif_name, mode="I") as writer:
+    with imageio.get_writer(f"../00_assets/ddpm_{config['dt']}_class_{config['label']}.gif", mode="I") as writer:
         for idx, frame in enumerate(frames):
             rgb_frame = np.repeat(frame, 3, axis=2)
             writer.append_data(rgb_frame)
