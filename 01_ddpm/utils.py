@@ -8,12 +8,8 @@ import imageio
 import einops
 
 
-
-
-
 def show_images(images, title="sample"):
     """Shows the provided images as sub-pictures in a square"""
-
     if type(images) is torch.Tensor:
         images = images.detach().cpu().numpy()
 
@@ -40,37 +36,26 @@ def show_first_batch(loader):
         break
 
 
-def generate_new_images(ddpm,
+def generate_new_images(ddpm, config,
                         n_samples=100,
-                        device=None,
-                        n_steps=1000,
-                        time_embed_size=100,
                         frames_per_gif=100,
                         gif_name="sampling.gif",
-                        c=1, h=28, w=28,
-                        with_class=False,
-                        num_classes=10,
-                        label=None):
+                        c=1, h=28, w=28):
     """Given a DDPM model, a number of samples to be generated and a device, returns some newly generated samples"""
-    frame_idxs = np.linspace(0, n_steps, frames_per_gif).astype(np.uint)
+    frame_idxs = np.linspace(0, config['n_steps'], frames_per_gif).astype(np.uint)
     frames = []
-    time_embedding = nn.Embedding(n_steps, time_embed_size)
-    time_embedding.weight.data = sinusoidal_embedding(n_steps, time_embed_size)
-    time_embedding.requires_grad_(False)
 
     with torch.no_grad():
-        if device is None:
-            device = ddpm.device
-        x = torch.randn(n_samples, c, h, w).to(device)
 
-        for idx, t in tqdm(enumerate(list(range(n_steps))[::-1])):
-            time_embed = time_embedding(torch.ones(n_samples, ).int() * t).squeeze().to(device)
-            if with_class:
-                class_embed = torch.zeros(n_samples, num_classes).to(device)
-                class_embed[:, label] = 1
-                eta_theta = ddpm(x, time_embed, class_embed)
+        x = torch.randn(n_samples, c, h, w).to(config['device'])
+
+        for idx, t in tqdm(enumerate(list(range(config['n_steps']))[::-1])):
+
+            if config['with_class']:
+                y = (torch.ones(n_samples, ) * config['label']).to(config['device'])
+                eta_theta = ddpm(x, t, y)
             else:
-                eta_theta = ddpm(x, time_embed, None)
+                eta_theta = ddpm(x, t, None)
 
             alpha_t = ddpm.alphas[t]
             alpha_t_hat = ddpm.alphas_hat[t]
@@ -78,7 +63,7 @@ def generate_new_images(ddpm,
             x = (1 / alpha_t.sqrt()) * (x - (1 - alpha_t) / (1 - alpha_t_hat).sqrt() * eta_theta)
 
             if t > 0:
-                z = torch.randn(n_samples, c, h, w).to(device)
+                z = torch.randn(n_samples, c, h, w).to(config['device'])
                 beta_t = ddpm.betas[t]
                 sigma_t = beta_t.sqrt()
                 x = x + sigma_t * z
