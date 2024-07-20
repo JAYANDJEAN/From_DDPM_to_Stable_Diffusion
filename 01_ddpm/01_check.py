@@ -1,11 +1,22 @@
 import torch
 from unet import UNet
 import torch.nn as nn
+from torchvision.datasets import CIFAR10
+from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, ToTensor, Lambda
+from utils import *
 
 batch_size = 128
 n_step = 1000
 n_class = 10
 n_time_embed = 100
+
+
+def check_data():
+    transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
+    dataset = CIFAR10(root="../00_assets/datasets", train=True, download=True, transform=transform)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    show_first_batch(loader)
 
 
 def check_unet_output():
@@ -32,4 +43,4 @@ def check_unet_output():
 
 
 if __name__ == '__main__':
-    check_unet_output()
+    check_data()

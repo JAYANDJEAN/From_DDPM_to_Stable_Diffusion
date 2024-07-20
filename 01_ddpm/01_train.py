@@ -10,7 +10,7 @@ from torch import nn
 from torch.optim import Adam
 
 torch.manual_seed(0)
-with open('../00_assets/ddpm.yml', 'r') as file:
+with open('../00_assets/cifar.yml', 'r') as file:
     config = yaml.safe_load(file)
 
 
