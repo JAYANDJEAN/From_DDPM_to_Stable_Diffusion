@@ -1,5 +1,4 @@
-from torch.utils.data import DataLoader, Subset
-from torchvision.transforms import Compose, ToTensor, Lambda
+from torch.utils.data import DataLoader
 from torchvision.datasets.mnist import MNIST
 from torchvision.transforms import Compose, ToTensor, Lambda
 from torchvision.datasets import CIFAR10
@@ -7,12 +6,12 @@ from schedulers import *
 from utils import *
 from unet import UNet
 import yaml
+from torch import nn
+from torch.optim import Adam
 
 torch.manual_seed(0)
-with open('../00_assets/ddpm_mnist.yml', 'r') as file:
+with open('../00_assets/ddpm.yml', 'r') as file:
     config = yaml.safe_load(file)
-
-config['label'] = 8
 
 
 def training_loop():
@@ -49,19 +48,19 @@ def training_loop():
         print(log_string)
 
 
-# Data
 transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
-full_dataset = MNIST(root="../00_assets/datasets", train=True, transform=transform, download=True)
-loader = DataLoader(full_dataset, batch_size=config['batch_size'], shuffle=True)
+if config['dt'] == 'mnist':
+    dataset = MNIST(root="../00_assets/datasets", train=True, transform=transform, download=True)
+    channels = [1, 8, 16, 32, 64, 64]
+elif config['dt'] == 'cifar10':
+    dataset = CIFAR10(root="../00_assets/datasets", train=True, download=True, transform=transform)
+    channels = [3, 8, 16, 32, 64, 64]
+else:
+    dataset = None
+    channels = None
+loader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
+show_first_batch(loader)
 
-
-# # 定义数据预处理 [0, 1] -> [-1, 1]
-# transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
-# dataset = CIFAR10(root='./datasets', train=True, download=True, transform=transform)
-# # dataset = MNIST(root="./datasets", train=True, transform=transform, download=True)
-#
-# loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-# show_first_batch(loader)
 
 class DDPM(nn.Module):
     def __init__(self,
@@ -85,7 +84,6 @@ class DDPM(nn.Module):
         return xt_from_x0(self.alphas_hat, x, t, eta)
 
 
-channels = [1, 8, 16, 32, 64, 64]
 unet = UNet(channels=channels,
             time_emb_dim=100,
             num_class=config['num_class'])
@@ -102,4 +100,4 @@ best_model.eval()
 
 print("\nGenerating images.......")
 generated = generate_new_images(ddpm=best_model, config=config)
-show_images(generated, f"../00_assets/ddpm_{config['dt']}_class_{config['label']}.png")
+show_images(generated, f"../00_assets/ddpm_{config['dt']}_class_{config['label']}")

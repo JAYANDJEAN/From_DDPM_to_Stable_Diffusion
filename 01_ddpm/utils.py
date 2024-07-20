@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from tqdm import tqdm
-from torch import nn
-from torch.optim import Adam
+
 import imageio
 import einops
 
@@ -37,11 +36,14 @@ def show_first_batch(loader):
 
 def generate_new_images(ddpm, config,
                         n_samples=100,
-                        frames_per_gif=100,
-                        c=1, h=28, w=28):
+                        frames_per_gif=100):
     """Given a DDPM model, a number of samples to be generated and a device, returns some newly generated samples"""
     frame_idxs = np.linspace(0, config['n_steps'], frames_per_gif).astype(np.uint)
     frames = []
+    if config['dt'] == 'mnist':
+        c, h, w = 1, 28, 28
+    elif config['dt'] == 'cifar10':
+        c, h, w = 3, 32, 32
 
     with torch.no_grad():
         x = torch.randn(n_samples, c, h, w).to(config['device'])
