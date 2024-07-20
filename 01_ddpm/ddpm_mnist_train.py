@@ -11,11 +11,10 @@ all_data = True
 partial = 7
 n_step, min_b, max_b, n_class, n_time, batch_size, n_epoch, lr = (1000, 10 ** -4, 0.02, 10, 100, 128, 20, 0.001)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-store_path = "ddpm_model_with_class.pt"
+store_path = "ddpm_model_with_class.pth"
 label = 8
 result_name = f"ddpm_result_with_class_{label}"
 gif_name = f"ddpm_with_class_{label}.gif"
-
 
 # Data
 transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
@@ -43,25 +42,22 @@ class DDPM(nn.Module):
         self.alphas = sch.alphas.to(device)
         self.betas = sch.betas.to(device)
 
-    def forward(self, x: Tensor, time_embed: Tensor, class_embed: Tensor) -> Tensor:
-        return self.network(x, time_embed, class_embed)
+    def forward(self, x: Tensor, t: Tensor, y: Tensor) -> Tensor:
+        return self.network(x, t, y)
 
     def noisy_(self, x: Tensor, t: Tensor, eta: Tensor) -> Tensor:
         return xt_from_x0(self.alphas_hat, x, t, eta)
 
 
-channels = [1, 10, 10, 20, 20, 20, 40, 40, 40, 64, 64]
+channels = [1, 8, 16, 32, 64, 64]
 unet = UNet(channels=channels,
-            p_dropouts=[0.0] * (len(channels) - 1),
-            time_embed_size=100,
-            num_classes=n_class,
-            use_down=True,
-            use_attention=False)
+            time_emb_dim=100,
+            num_class=n_class)
 ddpm = DDPM(unet, n_step, min_b, max_b, device).to(device)
 print(f"\nnumber of parameters: {sum([p.numel() for p in ddpm.parameters()])}")
 
 print("\nModel training.......")
-training_loop(ddpm, loader, device, lr, n_epoch, n_step, n_time, store_path, True, n_class)
+training_loop(ddpm, loader, device, lr, n_epoch, n_step, store_path, True)
 
 print("\nModel loading.......")
 best_model = DDPM(unet, n_step, min_b, max_b, device).to(device)
