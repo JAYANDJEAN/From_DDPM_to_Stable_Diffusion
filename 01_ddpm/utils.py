@@ -8,37 +8,7 @@ import imageio
 import einops
 
 
-def training_loop(ddpm, loader, device, lr, n_epochs, n_steps, store_path, with_class):
-    mse = nn.MSELoss()
-    best_loss = float("inf")
-    optim = Adam(ddpm.parameters(), lr)
 
-    for epoch in tqdm(range(n_epochs), desc=f"Training progress"):
-        epoch_loss = 0.0
-        for step, batch in enumerate(tqdm(loader, leave=False, desc=f"Epoch {epoch + 1}/{n_epochs}")):
-            # Loading data
-            x0 = batch[0].to(device)
-            y0 = batch[1].to(device)
-            eta = torch.randn_like(x0).to(device)
-            t = torch.randint(0, n_steps, (len(x0),)).to(device)
-            noisy_img = ddpm.noisy_(x0, t, eta).to(device)
-
-            if with_class:
-                pred_eta = ddpm(noisy_img, t, y0).to(device)
-            else:
-                pred_eta = ddpm(noisy_img, t, None).to(device)
-            loss = mse(pred_eta, eta)
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
-            epoch_loss += loss.item() * len(x0) / len(loader.dataset)
-        log_string = f"\nLoss at epoch {epoch + 1}: {epoch_loss:.3f}"
-        # Storing the model
-        if best_loss > epoch_loss:
-            best_loss = epoch_loss
-            torch.save(ddpm.state_dict(), store_path)
-            log_string += " --> Best model ever (stored)"
-        print(log_string)
 
 
 def show_images(images, title="sample"):
