@@ -12,4 +12,4 @@ batch_size: 128
 lr: 0.001
 device: cpu
 with_class: True
-model_path: ../00_assets/ddpm_model_with_class.pth
+model_path: ../00_assets/ddpm_model_cifar10.pth

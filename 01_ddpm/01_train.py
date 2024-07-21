@@ -56,10 +56,8 @@ elif config['dt'] == 'cifar10':
     dataset = CIFAR10(root="../00_assets/datasets", train=True, download=True, transform=transform)
     channels = [3, 8, 16, 32, 64, 64]
 else:
-    dataset = None
-    channels = None
+    raise ValueError("Unsupported dataset type")
 loader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
-show_first_batch(loader)
 
 
 class DDPM(nn.Module):
