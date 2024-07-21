@@ -22,7 +22,7 @@ n_class = 10
 n_time_embed = 100
 
 torch.manual_seed(0)
-with open('../00_assets/cifar.yml', 'r') as file:
+with open('../00_assets/cifar.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 

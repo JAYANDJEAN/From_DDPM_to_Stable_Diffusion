@@ -10,7 +10,7 @@ from torch import nn
 from torch.optim import Adam
 
 torch.manual_seed(0)
-with open('../00_assets/cifar.yml', 'r') as file:
+with open('../00_assets/cifar.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 
@@ -51,10 +51,8 @@ def training_loop():
 transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
 if config['dt'] == 'mnist':
     dataset = MNIST(root="../00_assets/datasets", train=True, transform=transform, download=True)
-    channels = [1, 8, 16, 32, 64, 64]
 elif config['dt'] == 'cifar10':
     dataset = CIFAR10(root="../00_assets/datasets", train=True, download=True, transform=transform)
-    channels = [3, 8, 16, 32, 64, 64]
 else:
     raise ValueError("Unsupported dataset type")
 loader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True)
@@ -82,8 +80,9 @@ class DDPM(nn.Module):
         return xt_from_x0(self.alphas_hat, x, t, eta)
 
 
-unet = UNet(channels=channels,
-            time_emb_dim=100,
+unet = UNet(channels=config['channels'],
+            time_emb_dim=config['time_emb_dim'],
+            dropout=config['dropout'],
             num_class=config['num_class'])
 ddpm = DDPM(unet, config['n_steps'], config['min_b'], config['max_b'], config['device']).to(config['device'])
 print(f"\nnumber of parameters: {sum([p.numel() for p in ddpm.parameters()])}")

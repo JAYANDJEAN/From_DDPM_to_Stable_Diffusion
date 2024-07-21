@@ -1,8 +1,8 @@
-import torch
-import torch.nn as nn
-import numpy as np
+import yaml
+from torch import nn
+from torch.optim import Adam
 
 
-
-frame_idxs = np.linspace(0, 1000, 100).astype(np.uint)
-print(frame_idxs)
+with open('../00_assets/cifar.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+print(type(config['channels']))
