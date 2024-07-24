@@ -28,6 +28,7 @@ def train(config: Dict):
     net_model = UNet(channel_img=config["img_channel"], channel_base=config["channel"],
                      channel_mults=config["channel_mult"], num_res_blocks=config["num_res_blocks"],
                      n_steps=config["T"], dropout=config["dropout"]).to(device)
+    print("Total trainable parameters:", sum(p.numel() for p in net_model.parameters() if p.requires_grad))
     if config["training_weight"] is not None:
         net_model.load_state_dict(torch.load(os.path.join(
             config["model_dir"], config["training_weight"]), map_location=device), strict=False)
