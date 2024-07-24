@@ -59,7 +59,7 @@ def train(config: Dict):
                     "LR": optimizer.state_dict()['param_groups'][0]["lr"]
                 })
         warmUpScheduler.step()
-        os.makedirs(config["model_dir"], exist_ok=True)
+
         torch.save(net_model.state_dict(), os.path.join(config["model_dir"], 'ckpt_' + str(e) + ".pth"))
 
 
@@ -86,7 +86,6 @@ def generate(config: Dict):
         noisyImage = torch.randn(size=[config["batch_size"], config["img_channel"],
                                        config["img_size"], config["img_size"]], device=device)
         saveNoisy = torch.clip(noisyImage * 0.5 + 0.5, 0, 1)
-        os.makedirs(config["image_dir"], exist_ok=True)
         save_image(saveNoisy, os.path.join(config["image_dir"], config["noisy_name"]), nrow=config["nrow"])
         sampledImgs = sampler(noisyImage, labels)
         sampledImgs = sampledImgs * 0.5 + 0.5  # [0 ~ 1]
@@ -95,8 +94,8 @@ def generate(config: Dict):
 
 if __name__ == '__main__':
     modelConfig = {
-        "epoch": 70,
-        "batch_size": 80,
+        "epoch": 10,
+        "batch_size": 128,
         "T": 1000,
         "channel": 128,
         "channel_mult": [1, 2, 2, 2],
@@ -120,5 +119,9 @@ if __name__ == '__main__':
         "generate_name": "img_generate.png",
         "raw_name": "img_raw.png"
     }
-    # train(modelConfig)
+
+    os.makedirs(modelConfig["model_dir"], exist_ok=True)
+    os.makedirs(modelConfig["image_dir"], exist_ok=True)
+    os.makedirs(modelConfig["image_gen_dir"], exist_ok=True)
+    train(modelConfig)
     generate(modelConfig)
