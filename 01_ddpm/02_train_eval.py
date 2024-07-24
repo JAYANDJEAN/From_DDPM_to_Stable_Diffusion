@@ -69,8 +69,8 @@ def generate(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # load model and evaluate
     with torch.no_grad():
-        values = torch.arange(1, 11)
-        labels = values.repeat_interleave(config["nrow"])
+        values = torch.arange(1, config["num_class"] + 1)
+        labels = values.repeat_interleave(config["nrow"]).to(device)
         print("labels: ", labels)
         model = UNet(channel_img=3, channel_base=config["channel"], channel_mults=config["channel_mult"],
                      num_res_blocks=config["num_res_blocks"], dropout=config["dropout"]).to(device)
@@ -84,7 +84,7 @@ def generate(config: Dict):
             nrow=config["nrow"],
             w=config["w"]).to(device)
 
-        noisyImage = torch.randn(size=[config["batch_size"], config["img_channel"],
+        noisyImage = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
                                        config["img_size"], config["img_size"]], device=device)
         saveNoisy = torch.clip(noisyImage * 0.5 + 0.5, 0, 1)
         save_image(saveNoisy, os.path.join(config["image_dir"], config["noisy_name"]), nrow=config["nrow"])
@@ -111,6 +111,7 @@ if __name__ == '__main__':
         "grad_clip": 1.,
         "w": 1.8,
         "nrow": 10,
+        "num_class": 10,
         "model_dir": "../00_assets/model_cifar10/",
         "training_weight": None,
         "eval_weight": "ckpt_63.pth",
