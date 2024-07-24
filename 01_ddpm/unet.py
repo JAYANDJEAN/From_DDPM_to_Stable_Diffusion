@@ -6,7 +6,7 @@ import math
 
 class Swish(nn.Module):
     def forward(self, x):
-        return x * torch.sigmoid(x)
+        return x*torch.sigmoid(x)
 
 
 class PositionalEncoding(nn.Module):
@@ -14,9 +14,9 @@ class PositionalEncoding(nn.Module):
         super().__init__()
         pos_embedding = torch.zeros(n_steps, dim)
         position = torch.arange(0, n_steps).unsqueeze(1)
-        div_term = torch.exp(- torch.arange(0, dim, 2) * (math.log(10000.0) / dim))
-        pos_embedding[:, 0::2] = torch.sin(position * div_term)
-        pos_embedding[:, 1::2] = torch.cos(position * div_term)
+        div_term = torch.exp(- torch.arange(0, dim, 2)*(math.log(10000.0)/dim))
+        pos_embedding[:, 0::2] = torch.sin(position*div_term)
+        pos_embedding[:, 1::2] = torch.cos(position*div_term)
         self.register_buffer('pos_embedding', pos_embedding)
 
     def forward(self, x: Tensor):
@@ -26,10 +26,11 @@ class PositionalEncoding(nn.Module):
 class DownSample(nn.Module):
     def __init__(self, ch_in: int):
         super().__init__()
-        self.down = nn.Conv2d(ch_in, ch_in, 3, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(ch_in, ch_in, 3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(ch_in, ch_in, 5, stride=2, padding=2)
 
     def forward(self, x: Tensor, time_embed: Tensor, label_embed: Optional[Tensor] = None):
-        return self.down(x)
+        return self.conv1(x) + self.conv2(x)
 
 
 class UpSample(nn.Module):
@@ -53,7 +54,7 @@ class Attention(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         # (batch_size, num_channel, height, width) -> (batch_size, num_channel, height, width)
         b, c, w, h = x.shape
-        x = x.reshape(b, w * h, c)
+        x = x.reshape(b, w*h, c)
         attn_output, attn_output_weights = self.attn_layer(x, x, x)
         return attn_output.reshape(b, c, w, h)
 
@@ -67,7 +68,7 @@ class ResBlock(nn.Module):
 
     def __init__(self, ch_in: int, ch_out: int, dropout: float, dim: int, use_attn: bool = False):
         super().__init__()
-        assert ch_in % 8 == 0
+        assert ch_in%8 == 0
         self.conv1 = nn.Sequential(
             nn.GroupNorm(32, ch_in),
             Swish(),
@@ -128,15 +129,15 @@ class UNet(nn.Module):
         pos_emb = PositionalEncoding(n_steps, d_model)
         self.time_embedding = nn.Sequential(
             pos_emb,
-            nn.Linear(d_model, d_model),
+            nn.Linear(d_model, time_emb_dim),
             Swish(),
-            nn.Linear(d_model, time_emb_dim)
+            nn.Linear(time_emb_dim, time_emb_dim)
         )
         self.label_embedding = nn.Sequential(
             nn.Embedding(num_embeddings=num_class + 1, embedding_dim=d_model, padding_idx=0),
-            nn.Linear(d_model, d_model),
+            nn.Linear(d_model, time_emb_dim),
             Swish(),
-            nn.Linear(d_model, time_emb_dim)
+            nn.Linear(time_emb_dim, time_emb_dim)
         )
 
         self.head = nn.Conv2d(channel_img, channel_base, kernel_size=3, stride=1, padding=1)
@@ -147,7 +148,7 @@ class UNet(nn.Module):
         ch_cur = channel_base
 
         for i, mult in enumerate(channel_mults):
-            ch_out = channel_base * mult
+            ch_out = channel_base*mult
             for _ in range(num_res_blocks):
                 self.downs.append(ResBlock(ch_cur, ch_out, dropout, time_emb_dim, use_attn=True))
                 ch_cur = ch_out
@@ -160,8 +161,7 @@ class UNet(nn.Module):
                                   ResBlock(ch_cur, ch_cur, dropout, time_emb_dim, use_attn=False)])
 
         for i, mult in reversed(list(enumerate(channel_mults))):
-            ch_out = channel_base * mult
-
+            ch_out = channel_base*mult
             for _ in range(num_res_blocks + 1):
                 self.ups.append(ResBlock(channels.pop() + ch_cur, ch_out, dropout, time_emb_dim, use_attn=False))
                 ch_cur = ch_out
@@ -194,5 +194,5 @@ class UNet(nn.Module):
             h = layer(h, time_embed, label_embed)
 
         h = self.tail(h)
-
+        assert len(hs) == 0
         return h

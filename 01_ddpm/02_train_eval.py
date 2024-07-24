@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, ToTensor, Lambda
+from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.datasets import CIFAR10
 from torchvision.utils import save_image
 
@@ -19,10 +19,10 @@ def train(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     dataset = CIFAR10(root='../00_assets/datasets', train=True, download=True,
-                      transform=Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)]))
+                      transform=Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), ]))
     dataloader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=True, drop_last=True, pin_memory=True)
     _, batch = next(enumerate(dataloader))
-    img_batch = torch.clamp(batch[0] * 0.5 + 0.5, 0, 1)
+    img_batch = torch.clip(batch[0] * 0.5 + 0.5, 0, 1)
     save_image(img_batch, os.path.join(config["image_dir"], config["raw_name"]), nrow=10)
 
     net_model = UNet(channel_img=config["img_channel"], channel_base=config["channel"],
@@ -30,8 +30,8 @@ def train(config: Dict):
                      n_steps=config["T"], dropout=config["dropout"]).to(device)
     print("Total trainable parameters:", sum(p.numel() for p in net_model.parameters() if p.requires_grad))
     if config["training_weight"] is not None:
-        net_model.load_state_dict(torch.load(os.path.join(
-            config["model_dir"], config["training_weight"]), map_location=device), strict=False)
+        net_model.load_state_dict(torch.load(
+            os.path.join(config["model_dir"], config["training_weight"]), map_location=device), strict=False)
         print("Model weight load down.")
 
     optimizer = torch.optim.AdamW(net_model.parameters(), lr=config["lr"], weight_decay=1e-4)
@@ -95,9 +95,9 @@ def generate(config: Dict):
 
 if __name__ == '__main__':
     modelConfig = {
-        "epoch": 10,
+        "epoch": 70,
         "batch_size": 128,
-        "T": 1000,
+        "T": 500,
         "channel": 128,
         "channel_mult": [1, 2, 2, 2],
         "num_res_blocks": 2,
