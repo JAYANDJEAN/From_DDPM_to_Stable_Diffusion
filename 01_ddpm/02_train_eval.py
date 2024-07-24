@@ -15,7 +15,7 @@ from unet import UNet
 
 
 def train(config: Dict):
-    device = torch.device(config["device"])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     dataset = CIFAR10(root='../00_assets/datasets', train=True, download=True,
                       transform=Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)]))
@@ -63,7 +63,7 @@ def train(config: Dict):
 
 
 def generate(config: Dict):
-    device = torch.device(config["device"])
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # load model and evaluate
     with torch.no_grad():
         values = torch.arange(1, 11)
@@ -107,8 +107,8 @@ if __name__ == '__main__':
         "img_channel": 3,
         "img_size": 32,
         "grad_clip": 1.,
-        "device": "cpu",
         "w": 1.8,
+        "nrow": 10,
         "model_dir": "../00_assets/model_cifar10/",
         "training_weight": None,
         "eval_weight": "ckpt_63.pth",
@@ -116,8 +116,7 @@ if __name__ == '__main__':
         "image_gen_dir": "../00_assets/img_cifar10/images/",
         "noisy_name": "img_noisy.png",
         "generate_name": "img_generate.png",
-        "raw_name": "img_raw.png",
-        "nrow": 8
+        "raw_name": "img_raw.png"
     }
     # train(modelConfig)
     generate(modelConfig)
