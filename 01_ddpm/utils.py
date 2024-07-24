@@ -16,6 +16,7 @@ def extract(v, t, x_shape):
     return out.view([t.shape[0]] + [1] * (len(x_shape) - 1))
 
 
+# UserWarning: To get the last learning rate computed by the scheduler, please use get_last_lr().
 class GradualWarmupScheduler(LRScheduler):
     def __init__(self, optimizer, multiplier, warm_epoch, after_scheduler=None):
         self.multiplier = multiplier
