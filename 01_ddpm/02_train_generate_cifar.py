@@ -19,7 +19,7 @@ def train(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     dataset = CIFAR10(root='../00_assets/datasets', train=True, download=True,
-                      transform=Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), ]))
+                      transform=Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
     dataloader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=True, drop_last=True, pin_memory=True)
     _, batch = next(enumerate(dataloader))
     img_batch = torch.clip(batch[0] * 0.5 + 0.5, 0, 1)
