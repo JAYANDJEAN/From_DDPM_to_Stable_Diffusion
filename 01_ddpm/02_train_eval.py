@@ -77,7 +77,7 @@ def generate(config: Dict):
         model.eval()
         sampler = GaussianDiffusionSampler(
             model, config["beta_1"], config["beta_T"], config["T"],
-            save_path=config["image_dir"] + "images/",
+            save_path=config["image_gen_dir"],
             nrow=config["nrow"],
             w=config["w"]).to(device)
 
@@ -113,6 +113,7 @@ if __name__ == '__main__':
         "training_weight": None,
         "eval_weight": "ckpt_63.pth",
         "image_dir": "../00_assets/img_cifar10/",
+        "image_gen_dir": "../00_assets/img_cifar10/images/",
         "noisy_name": "img_noisy.png",
         "generate_name": "img_generate.png",
         "raw_name": "img_raw.png",
