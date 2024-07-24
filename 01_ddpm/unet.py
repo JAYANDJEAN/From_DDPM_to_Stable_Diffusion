@@ -4,17 +4,9 @@ from typing import Optional, List
 import math
 
 
-def find_max_num_groups(in_channels: int) -> int:
-    """
-    Find the maximum number of groups for group normalization based on the number of input channels.
-    Args:
-        in_channels (int): Number of input channels.
-    Returns:
-        int: Maximum number of groups for group normalization.
-    """
-    for i in range(4, 0, -1):
-        if in_channels % i == 0:
-            return i
+class Swish(nn.Module):
+    def forward(self, x):
+        return x * torch.sigmoid(x)
 
 
 class PositionalEncoding(nn.Module):
@@ -26,9 +18,7 @@ class PositionalEncoding(nn.Module):
 
     def __init__(self, n_steps, dim):
         super().__init__()
-        self.dim = dim
         pos_embedding = torch.zeros(n_steps, dim)
-
         position = torch.arange(0, n_steps).unsqueeze(1)
         div_term = torch.exp(- torch.arange(0, dim, 2) * (math.log(10000.0) / dim))
         pos_embedding[:, 0::2] = torch.sin(position * div_term)
@@ -39,186 +29,181 @@ class PositionalEncoding(nn.Module):
         return self.pos_embedding[x]
 
 
-class Attention(nn.Module):
-    """
-    Attention module using Multi-head Attention mechanism.
-    """
-
-    def __init__(self, num_channels: int, num_heads: int = 1):
-        """
-        Initialize Attention module.
-        Args:
-            num_channels (int): Number of input channels.
-            num_heads (int): Number of attention heads (default is 1).
-        """
+class DownSample(nn.Module):
+    def __init__(self, ch_in: int):
         super().__init__()
-        self.channels = num_channels
-        self.heads = num_heads
-        self.attn_layer = nn.MultiheadAttention(num_channels, num_heads=num_heads)
+        self.down = nn.Conv2d(ch_in, ch_in, 3, stride=2, padding=1)
+
+    def forward(self, x: Tensor, time_embed: Tensor, label_embed: Optional[Tensor] = None):
+        return self.down(x)
+
+
+class UpSample(nn.Module):
+    def __init__(self, in_ch):
+        super().__init__()
+        self.up = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode="nearest"),
+            nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=1),
+        )
+
+    def forward(self, x: Tensor, time_embed: Tensor, label_embed: Optional[Tensor] = None):
+        x = self.up(x)
+        return x
+
+
+class Attention(nn.Module):
+    def __init__(self, num_channel: int, num_heads: int = 1):
+        super().__init__()
+        self.attn_layer = nn.MultiheadAttention(num_channel, num_heads=num_heads)
 
     def forward(self, x: Tensor) -> Tensor:
-        """
-        Forward pass of the attention module.
-        Args:
-            x (Tensor): Input tensor.
-        Returns:
-            Tensor: Output tensor after attention mechanism.
-        """
+        # (batch_size, num_channel, height, width) -> (batch_size, num_channel, height, width)
         b, c, w, h = x.shape
         x = x.reshape(b, w * h, c)
         attn_output, attn_output_weights = self.attn_layer(x, x, x)
         return attn_output.reshape(b, c, w, h)
 
 
-class Block(nn.Module):
-    """
-    Residual block with convolutional layers and additional embeddings.
-    """
-
-    def __init__(self, in_channel: int,
-                 out_channel: int,
-                 p_dropout: float,
-                 time_emb_dim: int
-                 ):
-        """
-        Initialize Residual block.
-        Args:
-            in_channel (int): Number of input channels.
-            out_channel (int): Number of output channels.
-            p_dropout (float): Dropout probability.
-            time_emb_dim (int): Size of the time embedding.
-        """
-        super(Block, self).__init__()
-
-        num_groups_in = find_max_num_groups(in_channel)
-        num_groups_out = find_max_num_groups(out_channel)
-
-        self.conv_layer = nn.Sequential(
-            nn.GroupNorm(num_groups_in, in_channel),
-            nn.GELU(),
-            nn.Conv2d(in_channel, out_channel, 3, 1, 1)
+class ResBlock(nn.Module):
+    def __init__(self, ch_in: int, ch_out: int, dropout: float, dim: int, use_attn: bool = False):
+        super().__init__()
+        assert ch_in % 8 == 0
+        self.conv1 = nn.Sequential(
+            nn.GroupNorm(8, ch_in),
+            Swish(),
+            nn.Conv2d(ch_in, ch_out, 3, 1, 1)
+        )
+        self.conv2 = nn.Sequential(
+            nn.GroupNorm(8, ch_out),
+            Swish(),
+            nn.Dropout(dropout),
+            nn.Conv2d(ch_out, ch_out, 3, 1, 1)
         )
 
-        self.out_layer = nn.Sequential(
-            nn.GroupNorm(num_groups_out, out_channel),
-            nn.GELU(),
-            nn.Dropout(p_dropout),
-            nn.Conv2d(out_channel, out_channel, 3, 1, 1)
+        self.linear_time = nn.Sequential(
+            Swish(),
+            nn.Linear(dim, ch_out)
+        )
+        self.linear_label = nn.Sequential(
+            Swish(),
+            nn.Linear(dim, ch_out)
         )
 
-        self.time_layer = nn.Sequential(
-            nn.GELU(),
-            nn.Linear(time_emb_dim, out_channel)
-        )
-
-        self.label_layer = nn.Sequential(
-            nn.GELU(),
-            nn.Linear(time_emb_dim, out_channel)
-        )
-
-        self.skip_connection = nn.Conv2d(in_channel, out_channel, 3, 1, 1)
+        if ch_in != ch_out:
+            self.shortcut = nn.Conv2d(ch_in, ch_out, kernel_size=1, stride=1, padding=0)
+        else:
+            self.shortcut = nn.Identity()
+        if use_attn:
+            self.attn = Attention(ch_out)
+        else:
+            self.attn = nn.Identity()
 
     def forward(self, x: Tensor, time_embed: Tensor, label_embed: Optional[Tensor] = None) -> Tensor:
-        h = self.conv_layer(x)
-        time_embed = self.time_layer(time_embed)
-        time_embed = time_embed.view(time_embed.shape[0], time_embed.shape[1], 1, 1)
-        if label_embed is None:
-            h = h + time_embed
-        else:
-            label_embed = self.label_layer(label_embed)
-            label_embed = label_embed.view(label_embed.shape[0], label_embed.shape[1], 1, 1)
-            h = h + time_embed + label_embed
-        return self.out_layer(h) + self.skip_connection(x)
+        time_embed = self.linear_time(time_embed)
+        h = self.conv1(x)
+        h += time_embed[:, :, None, None]
+        if label_embed is not None:
+            label_embed = self.linear_label(label_embed)
+            h += label_embed[:, :, None, None]
+
+        h = self.conv2(h) + self.shortcut(x)
+        h = self.attn(h)
+        return h
 
 
 class UNet(nn.Module):
-    def __init__(self, channels: List[int],
-                 time_emb_dim: int,
-                 num_class: int,
+    def __init__(self,
+                 channel_img: int,
+                 channel_base: int,
+                 channel_mults: List[int],
+                 num_class: int = 10,
+                 num_res_blocks: int = 2,
+                 time_emb_dim: int = 512,
                  n_steps: int = 1000,
                  dropout: float = 0.0):
-        """
-        Initialize UNet model.
-        Args:
-            channels (List[int]): List of channel sizes for each layer.
-            dropout (List[float]): List of dropout probabilities for each layer.
-            time_emb_dim (int): Size of the time embedding.
-            num_class (int): Number of classes.
-        """
 
         super().__init__()
 
-        assert len(channels) >= 4
-
-        self.channels = channels
         self.num_class = num_class
-        self.atten_index = 3
 
-        pos_emb = PositionalEncoding(n_steps, time_emb_dim)
+        d_model = 128
+        pos_emb = PositionalEncoding(n_steps, d_model)
         self.time_embedding = nn.Sequential(
             pos_emb,
-            nn.Linear(time_emb_dim, time_emb_dim),
-            nn.GELU(),
-            nn.Linear(time_emb_dim, time_emb_dim)
+            nn.Linear(d_model, d_model),
+            Swish(),
+            nn.Linear(d_model, time_emb_dim)
         )
-
         self.label_embedding = nn.Sequential(
-            nn.Linear(num_class, time_emb_dim),
-            nn.GELU(),
-            nn.Linear(time_emb_dim, time_emb_dim)
+            nn.Embedding(num_embeddings=num_class + 1, embedding_dim=d_model, padding_idx=0),
+            nn.Linear(d_model, d_model),
+            Swish(),
+            nn.Linear(d_model, time_emb_dim)
         )
 
-        self.down_blocks = nn.ModuleList([
-            Block(channels[i], channels[i + 1], dropout, time_emb_dim)
-            for i in range(len(channels) - 1)
-        ])
+        self.head = nn.Conv2d(channel_img, channel_base, kernel_size=3, stride=1, padding=1)
+        self.downs = nn.ModuleList()
+        self.ups = nn.ModuleList()
 
-        self.middle_block = Block(channels[-1], channels[-1], dropout, time_emb_dim)
+        channels = [channel_base]
+        now_channels = channel_base
 
-        self.up_blocks = nn.ModuleList([
-            Block((2 if i != 0 else 1) * channels[-i - 1], channels[-i - 2], dropout, time_emb_dim)
-            for i in range(len(channels) - 1)
-        ])
-        self.dropout = nn.Dropout2d(dropout)
-        self.self_attn = Attention(channels[self.atten_index])
+        for i, mult in enumerate(channel_mults):
+            out_channels = channel_base * mult
+
+            for _ in range(num_res_blocks):
+                self.downs.append(ResBlock(ch_in=now_channels, ch_out=out_channels, dropout=dropout,
+                                           dim=time_emb_dim, use_attn=True)
+                                  )
+                now_channels = out_channels
+                channels.append(now_channels)
+
+            if i != len(channel_mults) - 1:
+                self.downs.append(DownSample(now_channels))
+                channels.append(now_channels)
+
+        self.mid = nn.ModuleList([ResBlock(ch_in=now_channels, ch_out=now_channels, dropout=dropout,
+                                           dim=time_emb_dim, use_attn=True),
+                                  ResBlock(ch_in=now_channels, ch_out=now_channels, dropout=dropout,
+                                           dim=time_emb_dim, use_attn=False)]
+                                 )
+
+        for i, mult in reversed(list(enumerate(channel_mults))):
+            out_channels = channel_base * mult
+
+            for _ in range(num_res_blocks + 1):
+                self.ups.append(ResBlock(ch_in=channels.pop() + now_channels, ch_out=out_channels,
+                                         dropout=dropout, dim=time_emb_dim, use_attn=False)
+                                )
+                now_channels = out_channels
+            if i != 0:
+                self.ups.append(UpSample(now_channels))
+
+        assert len(channels) == 0
+
+        self.tail = nn.Sequential(
+            nn.GroupNorm(32, now_channels),
+            Swish(),
+            nn.Conv2d(now_channels, channel_img, kernel_size=3, stride=1, padding=1)
+        )
 
     def forward(self, x: Tensor, t: Tensor, y: Optional[Tensor] = None) -> Tensor:
-        """
-        Forward pass of the UNet model.
-        Args:
-            x (Tensor): Input tensor. x: (BATCH, CHANNELS, HEIGHT, WIDTH)
-            t (Tensor): Time tensor. t: (BATCH, )
-            y (Tensor): Class tensor. y: (BATCH, )
-        Returns:
-            Tensor: Output tensor after processing through the UNet model.
-        """
-        assert x.shape[1] == self.channels[0]
-
         time_embed = self.time_embedding(t)
-        if y is None:
-            label_embed = None
-        else:
-            label_embed = self.label_embedding(
-                nn.functional.one_hot(y, num_classes=self.num_class).float()
-            )
+        label_embed = self.label_embedding(y) if y is not None else None
 
-        hs = []
-        h = x
+        h = self.head(x)
+        hs = [h]
 
-        for i, down_block in enumerate(self.down_blocks):
-            h = down_block(h, time_embed, label_embed)
-            if i == self.atten_index - 1:
-                h = self.self_attn(h)
-            h = self.dropout(h)
-            if i != (len(self.down_blocks) - 1):
-                hs.append(h)
+        for layer in self.downs:
+            h = layer(h, time_embed, label_embed)
+            hs.append(h)
+        for layer in self.mid:
+            h = layer(h, time_embed, label_embed)
+        for layer in self.ups:
+            if isinstance(layer, ResBlock):
+                h = torch.cat([h, hs.pop()], dim=1)
+            h = layer(h, time_embed, label_embed)
 
-        h = self.middle_block(h, time_embed, label_embed)
+        h = self.tail(h)
 
-        for i, up_block in enumerate(self.up_blocks):
-            if i != 0:
-                h = torch.cat([h, hs[-i]], dim=1)
-            h = up_block(h, time_embed, label_embed)
-            if i != (len(self.up_blocks) - 1):
-                h = nn.functional.interpolate(h, size=hs[-i - 1].shape[-2:], mode='nearest')
         return h

@@ -48,6 +48,19 @@ class DDPM(nn.Module):
         return xt_from_x0(self.alphas_hat, x, t, eta)
 
 
+def check_conv():
+    ch_in = 3
+    ch_out = 32
+
+    x = torch.rand(batch_size, ch_in, 32, 32)
+    conv1 = nn.Conv2d(ch_in, ch_out, 3, stride=2, padding=1)
+    print(conv1(x).shape)
+
+    conv2 = nn.Conv2d(ch_in, ch_out, 3, stride=1, padding=1)
+    trans = nn.ConvTranspose2d(ch_out, ch_out, 5, stride=2, padding=2, output_padding=1)
+    print(trans(conv2(x)).shape)
+
+
 def check_data():
     transform = Compose([ToTensor(), Lambda(lambda x: (x - 0.5) * 2)])
     dataset = CIFAR10(root="../00_assets/datasets", train=True, download=True, transform=transform)
@@ -69,18 +82,10 @@ def check_data():
 def check_unet_output():
     t = torch.randint(0, n_step, (batch_size,))
     y = torch.randint(0, n_class, (batch_size,))
-
-    x0 = torch.rand(batch_size, 1, 28, 28)
-    unet = UNet(channels=[1, 10, 20, 40, 64],
-                dropout=0.1,
-                time_emb_dim=n_time_embed,
-                n_steps=n_step,
-                num_class=n_class)
-    x_recon = unet(x0, t, None)
-    assert x_recon.shape == x0.shape
-
-    x1 = torch.rand(batch_size, 3, 32, 35)
-    unet = UNet(channels=[3, 32, 64, 128],
+    x1 = torch.rand(batch_size, 3, 32, 32)
+    unet = UNet(channel_img=3,
+                channel_base=128,
+                channel_mults=[1, 2, 4, 8],
                 dropout=0.1,
                 time_emb_dim=100,
                 n_steps=n_step,
@@ -90,4 +95,4 @@ def check_unet_output():
 
 
 if __name__ == '__main__':
-    check_data()
+    check_unet_output()
