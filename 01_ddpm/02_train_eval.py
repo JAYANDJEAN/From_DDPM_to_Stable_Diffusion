@@ -1,6 +1,8 @@
 import os
 from typing import Dict
 import numpy as np
+import glob
+from PIL import Image
 
 import torch
 import torch.optim as optim
@@ -23,7 +25,7 @@ def train(config: Dict):
     dataloader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=True, drop_last=True, pin_memory=True)
     _, batch = next(enumerate(dataloader))
     img_batch = torch.clip(batch[0] * 0.5 + 0.5, 0, 1)
-    save_image(img_batch, os.path.join(config["image_dir"], config["raw_name"]), nrow=10)
+    save_image(img_batch, os.path.join(config["image_dir"], config["raw_name"]), nrow=config["nrow"])
 
     net_model = UNet(channel_img=config["img_channel"], channel_base=config["channel"],
                      channel_mults=config["channel_mult"], num_res_blocks=config["num_res_blocks"],
@@ -84,13 +86,22 @@ def generate(config: Dict):
             nrow=config["nrow"],
             w=config["w"]).to(device)
 
-        noisyImage = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
-                                       config["img_size"], config["img_size"]], device=device)
-        saveNoisy = torch.clip(noisyImage * 0.5 + 0.5, 0, 1)
-        save_image(saveNoisy, os.path.join(config["image_dir"], config["noisy_name"]), nrow=config["nrow"])
-        sampledImgs = sampler(noisyImage, labels)
-        sampledImgs = sampledImgs * 0.5 + 0.5  # [0 ~ 1]
-        save_image(sampledImgs, os.path.join(config["image_dir"], config["generate_name"]), nrow=config["nrow"])
+        img_noisy = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
+                                      config["img_size"], config["img_size"]], device=device)
+        save_image(tensor=torch.clip(img_noisy * 0.5 + 0.5, 0, 1),
+                   fp=os.path.join(config["image_dir"], config["noisy_name"]),
+                   nrow=config["nrow"])
+        img_sample = sampler(img_noisy, labels)
+        save_image(tensor=img_sample * 0.5 + 0.5,
+                   fp=os.path.join(config["image_dir"], config["generate_name"]),
+                   nrow=config["nrow"])
+
+    file_path = config["image_gen_dir"] + "*.png"
+    image_files = sorted(glob.glob(file_path))
+    first_image = Image.open(image_files[0])
+    frames = [Image.open(image) for image in image_files[1:]]
+    first_image.save(os.path.join(config["image_dir"], config["gif_name"]),
+                     save_all=True, append_images=frames, duration=100, loop=0)
 
 
 if __name__ == '__main__':
@@ -113,17 +124,19 @@ if __name__ == '__main__':
         "nrow": 10,
         "num_class": 10,
         "model_dir": "../00_assets/model_cifar10/",
-        "training_weight": None,
-        "eval_weight": "ckpt_63.pth",
         "image_dir": "../00_assets/img_cifar10/",
         "image_gen_dir": "../00_assets/img_cifar10/images/",
+        "training_weight": None,
+        "eval_weight": "ckpt_63.pth",
         "noisy_name": "img_noisy.png",
         "generate_name": "img_generate.png",
+        "gif_name": "img_generate.gif",
         "raw_name": "img_raw.png"
     }
 
     os.makedirs(modelConfig["model_dir"], exist_ok=True)
     os.makedirs(modelConfig["image_dir"], exist_ok=True)
     os.makedirs(modelConfig["image_gen_dir"], exist_ok=True)
+
     train(modelConfig)
     generate(modelConfig)
