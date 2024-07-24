@@ -15,6 +15,7 @@ from unet import UNet
 
 
 def train(config: Dict):
+    print("Model Training...............")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     dataset = CIFAR10(root='../00_assets/datasets', train=True, download=True,
@@ -63,6 +64,7 @@ def train(config: Dict):
 
 
 def generate(config: Dict):
+    print("Images Generating...............")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # load model and evaluate
     with torch.no_grad():
