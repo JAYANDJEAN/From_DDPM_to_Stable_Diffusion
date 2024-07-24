@@ -76,10 +76,10 @@ def generate(config: Dict):
                      channel_mults=config["channel_mult"], n_steps=config["T"],
                      num_res_blocks=config["num_res_blocks"], dropout=config["dropout"]).to(device)
 
-        for i in config["epoch"]:
+        for i in range(config["epoch"]):
             ckpt = torch.load(os.path.join(config["model_dir"], f"ckpt_{i}.pth"), map_location=device)
             model.load_state_dict(ckpt)
-            print("model load weight done.")
+            print(f"model_{i} load weight done.")
             model.eval()
             sampler = GaussianDiffusionSampler(
                 model, config["beta_1"], config["beta_T"], config["T"], w=config["w"]).to(device)
