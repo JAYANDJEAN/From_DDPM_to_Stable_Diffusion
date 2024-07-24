@@ -10,12 +10,6 @@ class Swish(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-    r"""PositionalEncoding
-    Args:
-        n_steps: the max length of sequence
-        dim: the number of expected features in the encoder/decoder inputs (default=512).
-    """
-
     def __init__(self, n_steps, dim):
         super().__init__()
         pos_embedding = torch.zeros(n_steps, dim)
@@ -65,19 +59,25 @@ class Attention(nn.Module):
 
 
 class ResBlock(nn.Module):
+    """
+    ResBlock 不改变 (height, width)，改变 channel
+    DownSample UpSample 改变 (height, width)，不改变 channel
+    Attention 不改变shape
+    """
+
     def __init__(self, ch_in: int, ch_out: int, dropout: float, dim: int, use_attn: bool = False):
         super().__init__()
         assert ch_in % 8 == 0
         self.conv1 = nn.Sequential(
-            nn.GroupNorm(8, ch_in),
+            nn.GroupNorm(32, ch_in),
             Swish(),
-            nn.Conv2d(ch_in, ch_out, 3, 1, 1)
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1)
         )
         self.conv2 = nn.Sequential(
-            nn.GroupNorm(8, ch_out),
+            nn.GroupNorm(32, ch_out),
             Swish(),
             nn.Dropout(dropout),
-            nn.Conv2d(ch_out, ch_out, 3, 1, 1)
+            nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1)
         )
 
         self.linear_time = nn.Sequential(
@@ -124,8 +124,6 @@ class UNet(nn.Module):
 
         super().__init__()
 
-        self.num_class = num_class
-
         d_model = 128
         pos_emb = PositionalEncoding(n_steps, d_model)
         self.time_embedding = nn.Sequential(
@@ -146,45 +144,36 @@ class UNet(nn.Module):
         self.ups = nn.ModuleList()
 
         channels = [channel_base]
-        now_channels = channel_base
+        ch_cur = channel_base
 
         for i, mult in enumerate(channel_mults):
-            out_channels = channel_base * mult
-
+            ch_out = channel_base * mult
             for _ in range(num_res_blocks):
-                self.downs.append(ResBlock(ch_in=now_channels, ch_out=out_channels, dropout=dropout,
-                                           dim=time_emb_dim, use_attn=True)
-                                  )
-                now_channels = out_channels
-                channels.append(now_channels)
-
+                self.downs.append(ResBlock(ch_cur, ch_out, dropout, time_emb_dim, use_attn=True))
+                ch_cur = ch_out
+                channels.append(ch_cur)
             if i != len(channel_mults) - 1:
-                self.downs.append(DownSample(now_channels))
-                channels.append(now_channels)
+                self.downs.append(DownSample(ch_cur))
+                channels.append(ch_cur)
 
-        self.mid = nn.ModuleList([ResBlock(ch_in=now_channels, ch_out=now_channels, dropout=dropout,
-                                           dim=time_emb_dim, use_attn=True),
-                                  ResBlock(ch_in=now_channels, ch_out=now_channels, dropout=dropout,
-                                           dim=time_emb_dim, use_attn=False)]
-                                 )
+        self.mid = nn.ModuleList([ResBlock(ch_cur, ch_cur, dropout, time_emb_dim, use_attn=True),
+                                  ResBlock(ch_cur, ch_cur, dropout, time_emb_dim, use_attn=False)])
 
         for i, mult in reversed(list(enumerate(channel_mults))):
-            out_channels = channel_base * mult
+            ch_out = channel_base * mult
 
             for _ in range(num_res_blocks + 1):
-                self.ups.append(ResBlock(ch_in=channels.pop() + now_channels, ch_out=out_channels,
-                                         dropout=dropout, dim=time_emb_dim, use_attn=False)
-                                )
-                now_channels = out_channels
+                self.ups.append(ResBlock(channels.pop() + ch_cur, ch_out, dropout, time_emb_dim, use_attn=False))
+                ch_cur = ch_out
             if i != 0:
-                self.ups.append(UpSample(now_channels))
+                self.ups.append(UpSample(ch_cur))
 
         assert len(channels) == 0
 
         self.tail = nn.Sequential(
-            nn.GroupNorm(32, now_channels),
+            nn.GroupNorm(32, ch_cur),
             Swish(),
-            nn.Conv2d(now_channels, channel_img, kernel_size=3, stride=1, padding=1)
+            nn.Conv2d(ch_cur, channel_img, kernel_size=3, stride=1, padding=1)
         )
 
     def forward(self, x: Tensor, t: Tensor, y: Optional[Tensor] = None) -> Tensor:
