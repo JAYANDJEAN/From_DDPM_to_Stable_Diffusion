@@ -79,7 +79,6 @@ def generate(config: Dict):
         for i in range(config["epoch"]):
             ckpt = torch.load(os.path.join(config["model_dir"], f"ckpt_{i}.pth"), map_location=device)
             model.load_state_dict(ckpt)
-            print(f"model_{i} load weight done.")
             model.eval()
             sampler = GaussianDiffusionSampler(
                 model, config["beta_1"], config["beta_T"], config["T"], w=config["w"]).to(device)
