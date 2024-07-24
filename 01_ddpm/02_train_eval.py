@@ -1,8 +1,6 @@
 import os
 from typing import Dict
 import numpy as np
-import glob
-from PIL import Image
 
 import torch
 import torch.optim as optim
@@ -63,7 +61,7 @@ def train(config: Dict):
                 })
         warmUpScheduler.step()
 
-        torch.save(net_model.state_dict(), os.path.join(config["model_dir"], 'ckpt_' + str(e) + ".pth"))
+        torch.save(net_model.state_dict(), os.path.join(config["model_dir"], f"ckpt_{e}.pth"))
 
 
 def generate(config: Dict):
@@ -73,35 +71,26 @@ def generate(config: Dict):
     with torch.no_grad():
         values = torch.arange(1, config["num_class"] + 1)
         labels = values.repeat_interleave(config["nrow"]).to(device)
-        print("labels: ", labels)
-        model = UNet(channel_img=3, channel_base=config["channel"], channel_mults=config["channel_mult"],
+
+        model = UNet(channel_img=config["img_channel"], channel_base=config["channel"],
+                     channel_mults=config["channel_mult"], n_steps=config["T"],
                      num_res_blocks=config["num_res_blocks"], dropout=config["dropout"]).to(device)
-        ckpt = torch.load(os.path.join(config["model_dir"], config["eval_weight"]), map_location=device)
-        model.load_state_dict(ckpt)
-        print("model load weight done.")
-        model.eval()
-        sampler = GaussianDiffusionSampler(
-            model, config["beta_1"], config["beta_T"], config["T"],
-            save_path=config["image_gen_dir"],
-            nrow=config["nrow"],
-            w=config["w"]).to(device)
 
-        img_noisy = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
-                                      config["img_size"], config["img_size"]], device=device)
-        save_image(tensor=torch.clip(img_noisy * 0.5 + 0.5, 0, 1),
-                   fp=os.path.join(config["image_dir"], config["noisy_name"]),
-                   nrow=config["nrow"])
-        img_sample = sampler(img_noisy, labels)
-        save_image(tensor=img_sample * 0.5 + 0.5,
-                   fp=os.path.join(config["image_dir"], config["generate_name"]),
-                   nrow=config["nrow"])
+        for i in config["epoch"]:
+            ckpt = torch.load(os.path.join(config["model_dir"], f"ckpt_{i}.pth"), map_location=device)
+            model.load_state_dict(ckpt)
+            print("model load weight done.")
+            model.eval()
+            sampler = GaussianDiffusionSampler(
+                model, config["beta_1"], config["beta_T"], config["T"], w=config["w"]).to(device)
 
-    file_path = config["image_gen_dir"] + "*.png"
-    image_files = sorted(glob.glob(file_path))
-    first_image = Image.open(image_files[0])
-    frames = [Image.open(image) for image in image_files[1:]]
-    first_image.save(os.path.join(config["image_dir"], config["gif_name"]),
-                     save_all=True, append_images=frames, duration=100, loop=0)
+            img_noisy = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
+                                          config["img_size"], config["img_size"]], device=device)
+            img_sample = sampler(img_noisy, labels)
+            save_image(tensor=img_sample * 0.5 + 0.5,
+                       fp=os.path.join(config["image_dir"], f"img_generate_{i}.png"),
+                       nrow=config["nrow"])
+            print(f"img_generate_{i}.png is done!")
 
 
 if __name__ == '__main__':
@@ -125,18 +114,12 @@ if __name__ == '__main__':
         "num_class": 10,
         "model_dir": "../00_assets/model_cifar10/",
         "image_dir": "../00_assets/img_cifar10/",
-        "image_gen_dir": "../00_assets/img_cifar10/images/",
         "training_weight": None,
-        "eval_weight": "ckpt_63.pth",
-        "noisy_name": "img_noisy.png",
-        "generate_name": "img_generate.png",
-        "gif_name": "img_generate.gif",
         "raw_name": "img_raw.png"
     }
 
     os.makedirs(modelConfig["model_dir"], exist_ok=True)
     os.makedirs(modelConfig["image_dir"], exist_ok=True)
-    os.makedirs(modelConfig["image_gen_dir"], exist_ok=True)
 
-    train(modelConfig)
+    # train(modelConfig)
     generate(modelConfig)

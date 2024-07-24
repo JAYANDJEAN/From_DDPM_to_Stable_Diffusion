@@ -71,10 +71,8 @@ class GaussianDiffusionTrainer(nn.Module):
 
 
 class GaussianDiffusionSampler(nn.Module):
-    def __init__(self, model, beta_1, beta_T, T, save_path, nrow, w=0.):
+    def __init__(self, model, beta_1, beta_T, T, w=0.):
         super().__init__()
-        self.save_path = save_path
-        self.nrow = nrow
         self.model = model
         self.T = T
 
@@ -118,8 +116,7 @@ class GaussianDiffusionSampler(nn.Module):
                 noise = 0
             x_t = mean + torch.sqrt(var) * noise
             assert torch.isnan(x_t).int().sum() == 0, "nan in tensor."
-
-            img_save = torch.clip(x_t * 0.5 + 0.5, 0, 1)
-            save_image(img_save, os.path.join(self.save_path, f'{self.T - time_step:04d}.png'), nrow=self.nrow)
+            # img_save = torch.clip(x_t * 0.5 + 0.5, 0, 1)
+            # save_image(img_save, os.path.join(self.save_path, f'{self.T - time_step:04d}.png'), nrow=self.nrow)
         x_0 = x_t
         return torch.clip(x_0, -1, 1)
