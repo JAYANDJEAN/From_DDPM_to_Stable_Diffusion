@@ -19,25 +19,17 @@ def visual_alpha():
         sqrt_one_minus_alphas_bar = np.sqrt(1 - alphas_bar)
         return sqrt_alphas_bar, sqrt_one_minus_alphas_bar
 
-    # 参数设置
-    T = 1000  # 总的时间步数
-    beta_start = 0.0001  # beta的初始值
-    beta_end = 0.02  # beta的终值
-
-    # 计算DDPM参数
+    T = 1000
+    beta_start = 0.0001
+    beta_end = 0.02
     alpha, beta = compute_ddpm_params(T, beta_start, beta_end)
-
-    # 绘制图形
     plt.figure(figsize=(12, 8))
-
     plt.plot(alpha, label='sqrt_alphas_bar')
     plt.plot(beta, label='sqrt_one_minus_alphas_bar', color='orange')
-
     plt.title('DDPM Parameters')
     plt.legend()
     plt.xlabel('Timesteps')
     plt.ylabel('Value')
-
     plt.tight_layout()
     plt.savefig('../00_assets/parameters.png')
 
