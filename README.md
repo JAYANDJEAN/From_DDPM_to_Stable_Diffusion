@@ -8,5 +8,5 @@ https://github.com/abarankab/DDPM/tree/main
 https://github.com/kjsman/stable-diffusion-pytorch
 https://github.com/Michedev/DDPMs-Pytorch/tree/master
 
-
+https://github.com/kjsman/stable-diffusion-pytorch
 https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
