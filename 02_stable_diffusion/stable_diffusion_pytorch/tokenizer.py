@@ -1,6 +1,5 @@
 import unicodedata
 import functools
-import itertools
 import json
 from typing import List, Tuple
 import regex as re
@@ -12,18 +11,20 @@ def create_bytes_table() -> dict:
     special_count = 0
     for byte in range(256):
         category = unicodedata.category(chr(byte))
-        if category[0] not in ['C', 'Z']:      # ith character is NOT control char or space
+        if category[0] not in ['C', 'Z']:  # ith character is NOT control char or space
             table[byte] = chr(byte)
-        else:                                  # ith character IS control char or space
+        else:  # ith character IS control char or space
             table[byte] = chr(special_count + 256)
             special_count += 1
     return table
+
 
 def pairwise(seq):
     a = iter(seq)
     b = iter(seq)
     next(b)
     return zip(a, b)
+
 
 class Tokenizer:
     def __init__(self, ):
@@ -40,7 +41,9 @@ class Tokenizer:
         self.pad_token = self.vocab["<|endoftext|>"]
         self.max_length = 77
         self.bytes_table = create_bytes_table()
-        self.chunk_pattern = re.compile(r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""", re.IGNORECASE)
+        self.chunk_pattern = re.compile(
+            r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
+            re.IGNORECASE)
 
     def encode(self, text: str) -> List[int]:
         text = unicodedata.normalize('NFC', text)
@@ -59,7 +62,7 @@ class Tokenizer:
         pad_length = self.max_length - token_length
         tokens += [self.pad_token] * pad_length
         return tokens
-    
+
     def encode_batch(self, texts: List[str]) -> List[List[int]]:
         return [self.encode(text) for text in texts]
 
@@ -75,7 +78,7 @@ class Tokenizer:
 
             bigram = min(valid_pairs, key=lambda pair: self.merges[pair])
             first, second = bigram
-            
+
             new_words = []
             for word in words:
                 if word == second and new_words and new_words[-1] == first:
@@ -83,5 +86,5 @@ class Tokenizer:
                 else:
                     new_words.append(word)
             words = new_words
-        
+
         return tuple(words)

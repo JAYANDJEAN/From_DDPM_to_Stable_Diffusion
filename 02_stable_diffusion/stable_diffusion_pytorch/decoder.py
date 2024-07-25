@@ -9,7 +9,7 @@ class AttentionBlock(nn.Module):
         super().__init__()
         self.groupnorm = nn.GroupNorm(32, channels)
         self.attention = SelfAttention(1, channels)
-    
+
     def forward(self, x):
         residue = x
         x = self.groupnorm(x)
@@ -24,6 +24,7 @@ class AttentionBlock(nn.Module):
         x += residue
         return x
 
+
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -37,7 +38,7 @@ class ResidualBlock(nn.Module):
             self.residual_layer = nn.Identity()
         else:
             self.residual_layer = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
-    
+
     def forward(self, x):
         residue = x
 
@@ -50,6 +51,7 @@ class ResidualBlock(nn.Module):
         x = self.conv_2(x)
 
         return x + self.residual_layer(residue)
+
 
 class Decoder(nn.Sequential):
     def __init__(self):
