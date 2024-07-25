@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import LRScheduler
-from torchvision.utils import save_image
-import os
 
 
 def extract(v, t, x_shape):
@@ -48,8 +46,12 @@ class GradualWarmupScheduler(LRScheduler):
             return super(GradualWarmupScheduler, self).step(epoch)
 
 
-class GaussianDiffusionTrainer(nn.Module):
+class TrainerDDPM(nn.Module):
     def __init__(self, model, beta_1, beta_T, T):
+        """
+        \alpha_t:=1-\beta_t
+        \bar{\alpha}_t:=\prod_{s=1}^t \alpha_s
+        """
         super().__init__()
         self.model = model
         self.T = T
@@ -70,7 +72,7 @@ class GaussianDiffusionTrainer(nn.Module):
         return loss
 
 
-class GaussianDiffusionSampler(nn.Module):
+class SamplerDDPM(nn.Module):
     def __init__(self, model, beta_1, beta_T, T, w=0.):
         super().__init__()
         self.model = model

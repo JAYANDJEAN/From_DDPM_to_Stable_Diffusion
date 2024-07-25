@@ -1,25 +1,45 @@
-import torch
-from unet import UNet
-import torch.nn as nn
-from torchvision.datasets import CIFAR10
-from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, ToTensor, Lambda
-from utils import *
-from torch.utils.data import DataLoader
-from torchvision.datasets.mnist import MNIST
-from torchvision.transforms import Compose, ToTensor, Lambda
-from torchvision.datasets import CIFAR10
-from schedulers import *
 from utils import *
 from unet import UNet
-import yaml
 from torch import nn
-from torch.optim import Adam
+import numpy as np
+import matplotlib.pyplot as plt
 
 torch.manual_seed(0)
 batch_size = 128
 n_step = 1000
 n_class = 10
+
+
+def visual_alpha():
+    def compute_ddpm_params(T, beta_start, beta_end):
+        betas = np.linspace(beta_start, beta_end, T)
+        alphas = 1 - betas
+        alphas_bar = np.cumprod(alphas)
+        sqrt_alphas_bar = np.sqrt(alphas_bar)
+        sqrt_one_minus_alphas_bar = np.sqrt(1 - alphas_bar)
+        return sqrt_alphas_bar, sqrt_one_minus_alphas_bar
+
+    # 参数设置
+    T = 1000  # 总的时间步数
+    beta_start = 0.0001  # beta的初始值
+    beta_end = 0.02  # beta的终值
+
+    # 计算DDPM参数
+    alpha, beta = compute_ddpm_params(T, beta_start, beta_end)
+
+    # 绘制图形
+    plt.figure(figsize=(12, 8))
+
+    plt.plot(alpha, label='sqrt_alphas_bar')
+    plt.plot(beta, label='sqrt_one_minus_alphas_bar', color='orange')
+
+    plt.title('DDPM Parameters')
+    plt.legend()
+    plt.xlabel('Timesteps')
+    plt.ylabel('Value')
+
+    plt.tight_layout()
+    plt.savefig('../00_assets/parameters.png')
 
 
 def check_conv():
@@ -41,7 +61,7 @@ def check_unet_output():
     x1 = torch.rand(batch_size, 3, 32, 32)
     unet = UNet(channel_img=3,
                 channel_base=128,
-                channel_mults=[1, 1, 2, 4],
+                channel_mults=[1, 2, 2, 2],
                 dropout=0.1,
                 n_steps=n_step,
                 num_class=n_class)
@@ -51,4 +71,4 @@ def check_unet_output():
 
 
 if __name__ == '__main__':
-    check_unet_output()
+    visual_alpha()

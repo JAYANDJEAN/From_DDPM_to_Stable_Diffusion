@@ -10,7 +10,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.datasets import CIFAR10
 from torchvision.utils import save_image
 
-from utils import GaussianDiffusionSampler, GaussianDiffusionTrainer, GradualWarmupScheduler
+from utils import SamplerDDPM, TrainerDDPM, GradualWarmupScheduler
 from unet import UNet
 
 
@@ -39,7 +39,7 @@ def train(config: Dict):
         optimizer=optimizer, T_max=config["epoch"], eta_min=0, last_epoch=-1)
     warmUpScheduler = GradualWarmupScheduler(optimizer=optimizer, multiplier=config["multiplier"],
                                              warm_epoch=config["epoch"] // 10, after_scheduler=cosineScheduler)
-    trainer = GaussianDiffusionTrainer(net_model, config["beta_1"], config["beta_T"], config["T"]).to(device)
+    trainer = TrainerDDPM(net_model, config["beta_1"], config["beta_T"], config["T"]).to(device)
 
     for e in range(config["epoch"]):
         with tqdm(dataloader, dynamic_ncols=True) as tqdmDataLoader:
@@ -80,7 +80,7 @@ def generate(config: Dict):
             ckpt = torch.load(os.path.join(config["model_dir"], f"ckpt_{i}.pth"), map_location=device)
             model.load_state_dict(ckpt)
             model.eval()
-            sampler = GaussianDiffusionSampler(
+            sampler = SamplerDDPM(
                 model, config["beta_1"], config["beta_T"], config["T"], w=config["w"]).to(device)
 
             img_noisy = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
@@ -121,4 +121,4 @@ if __name__ == '__main__':
     os.makedirs(modelConfig["image_dir"], exist_ok=True)
 
     # train(modelConfig)
-    generate(modelConfig)
+    # generate(modelConfig)
