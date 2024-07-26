@@ -124,6 +124,10 @@ class SwitchSequential(nn.Sequential):
 
 
 class UNet(nn.Module):
+    """
+    ResidualBlock、AttentionBlock 不改变 shape
+
+    """
     def __init__(self):
         super().__init__()
         self.encoders = nn.ModuleList([
@@ -162,13 +166,15 @@ class UNet(nn.Module):
 
     def forward(self, x, context, time):
         skip_connections = []
-        for layers in self.encoders:
+        for i, layers in enumerate(self.encoders):
+            print(f"{i}: {layers.__ne__}, {len(skip_connections)}")
             x = layers(x, context, time)
             skip_connections.append(x)
 
         x = self.bottleneck(x, context, time)
 
-        for layers in self.decoders:
+        for i, layers in enumerate(self.decoders):
+            print(f"{i}: {layers.__ne__}, {len(skip_connections)}")
             x = torch.cat((x, skip_connections.pop()), dim=1)
             x = layers(x, context, time)
 
