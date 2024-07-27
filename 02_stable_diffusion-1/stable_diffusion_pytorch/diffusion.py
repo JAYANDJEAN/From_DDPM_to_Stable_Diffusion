@@ -167,14 +167,11 @@ class UNet(nn.Module):
     def forward(self, x, context, time):
         skip_connections = []
         for i, layers in enumerate(self.encoders):
-            print(f"{i}: {layers.__ne__}, {len(skip_connections)}")
             x = layers(x, context, time)
             skip_connections.append(x)
-
         x = self.bottleneck(x, context, time)
 
         for i, layers in enumerate(self.decoders):
-            print(f"{i}: {layers.__ne__}, {len(skip_connections)}")
             x = torch.cat((x, skip_connections.pop()), dim=1)
             x = layers(x, context, time)
 

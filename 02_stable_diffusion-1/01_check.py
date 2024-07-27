@@ -86,8 +86,8 @@ def check_diffusion():
     output = unet(latent, context, time)
     print(output.shape)
 
-    # diffusion = model_loader.load_diffusion(device)
-    # summary(diffusion, latents, context, time_embedding, show_input=True)
+    diffusion = model_loader.load_diffusion(device)
+    summary(diffusion, latent, context, time_embedding, show_input=True)
 
 
 if __name__ == '__main__':
