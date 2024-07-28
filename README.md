@@ -17,5 +17,13 @@ https://github.com/hkproj/pytorch-stable-diffusion
 
 ## Stable Diffusion 3
 
+inference代码
 https://github.com/Stability-AI/sd3-ref
+https://github.com/comfyanonymous/ComfyUI
 
+
+
+https://github.com/vdumoulin/conv_arithmetic
+
+
+训练代码，需要EMA
