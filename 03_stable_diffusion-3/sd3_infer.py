@@ -1,6 +1,6 @@
 # NOTE: Must have folder `models` with the following files:
 # - `clip_g.safetensors` (openclip bigG, same as SDXL)
-# - `clip_l.safetensors` (OpenAI CLIP-L, same as SDXL)
+# - `model.safetensors` (OpenAI CLIP-L, same as SDXL)
 # - `t5xxl.safetensors` (google T5-v1.1-XXL)
 # - `sd3_medium.safetensors` (or whichever main MMDiT model file)
 # Also can have
@@ -73,7 +73,7 @@ CLIPL_CONFIG = {
 
 class ClipL:
     def __init__(self):
-        with safe_open("models/clip_l.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("models/clip_l/model.safetensors", framework="pt", device="cpu") as f:
             self.model = SDClipModel(layer="hidden", layer_idx=-2, device="cpu", dtype=torch.float32,
                                      layer_norm_hidden_state=False, return_projected_pooled=False,
                                      textmodel_json_config=CLIPL_CONFIG)
