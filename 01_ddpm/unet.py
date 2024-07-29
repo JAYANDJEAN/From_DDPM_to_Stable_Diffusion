@@ -6,7 +6,7 @@ import math
 
 class Swish(nn.Module):
     def forward(self, x):
-        return x*torch.sigmoid(x)
+        return x * torch.sigmoid(x)
 
 
 class PositionalEncoding(nn.Module):
@@ -14,9 +14,9 @@ class PositionalEncoding(nn.Module):
         super().__init__()
         pos_embedding = torch.zeros(n_steps, dim)
         position = torch.arange(0, n_steps).unsqueeze(1)
-        div_term = torch.exp(- torch.arange(0, dim, 2)*(math.log(10000.0)/dim))
-        pos_embedding[:, 0::2] = torch.sin(position*div_term)
-        pos_embedding[:, 1::2] = torch.cos(position*div_term)
+        div_term = torch.exp(- torch.arange(0, dim, 2) * (math.log(10000.0) / dim))
+        pos_embedding[:, 0::2] = torch.sin(position * div_term)
+        pos_embedding[:, 1::2] = torch.cos(position * div_term)
         self.register_buffer('pos_embedding', pos_embedding)
 
     def forward(self, x: Tensor):
@@ -54,7 +54,7 @@ class Attention(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         # (batch_size, num_channel, height, width) -> (batch_size, num_channel, height, width)
         b, c, w, h = x.shape
-        x = x.reshape(b, w*h, c)
+        x = x.reshape(b, w * h, c)
         attn_output, attn_output_weights = self.attn_layer(x, x, x)
         return attn_output.reshape(b, c, w, h)
 
@@ -68,7 +68,7 @@ class ResBlock(nn.Module):
 
     def __init__(self, ch_in: int, ch_out: int, dropout: float, dim: int, use_attn: bool = False):
         super().__init__()
-        assert ch_in%8 == 0
+        assert ch_in % 8 == 0
         self.conv1 = nn.Sequential(
             nn.GroupNorm(32, ch_in),
             Swish(),
@@ -148,7 +148,7 @@ class UNet(nn.Module):
         ch_cur = channel_base
 
         for i, mult in enumerate(channel_mults):
-            ch_out = channel_base*mult
+            ch_out = channel_base * mult
             for _ in range(num_res_blocks):
                 self.downs.append(ResBlock(ch_cur, ch_out, dropout, time_emb_dim, use_attn=True))
                 ch_cur = ch_out
@@ -161,7 +161,7 @@ class UNet(nn.Module):
                                   ResBlock(ch_cur, ch_cur, dropout, time_emb_dim, use_attn=False)])
 
         for i, mult in reversed(list(enumerate(channel_mults))):
-            ch_out = channel_base*mult
+            ch_out = channel_base * mult
             for _ in range(num_res_blocks + 1):
                 self.ups.append(ResBlock(channels.pop() + ch_cur, ch_out, dropout, time_emb_dim, use_attn=False))
                 ch_cur = ch_out
