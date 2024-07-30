@@ -31,7 +31,7 @@ def visual_alpha():
     plt.xlabel('Timesteps')
     plt.ylabel('Value')
     plt.tight_layout()
-    plt.savefig('../00_assets/parameters.png')
+    plt.savefig('../00_assets/image/parameters.png')
 
 
 def check_conv():

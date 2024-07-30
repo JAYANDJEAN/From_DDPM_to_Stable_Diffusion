@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from diffusers import StableDiffusion3Pipeline
-from diffusion import MMDiT, TimestepEmbedder
+from diffusion import *
 from modelsummary import summary
 import math
 import matplotlib.pyplot as plt
@@ -44,11 +44,25 @@ def check_diffusion():
 
 
 def check_parts():
-    t = torch.randint(low=1, high=50, size=(2,))
-    t_embedder = TimestepEmbedder(512)
-    print(t_embedder(t, dtype=torch.float32).shape)
-    print(t_embedder(t, dtype=torch.float32)[0, 0:5])
+    time_emb = TimestepEmbedder(hidden_size)
+    self_atten = SelfAttention(hidden_size)
+    mlp_hidden_dim = int(hidden_size * 4)
+    mlp = SwiGLUFeedForward(dim=hidden_size, hidden_dim=mlp_hidden_dim, multiple_of=256)
+
+    time = torch.tensor(range(time_step))
+    time_embedding = time_emb(time)
+    assert time_embedding.shape == (time_step, hidden_size)
+
+    x = torch.randn((batch_size, dim_context, hidden_size))
+    # 即输入输出的shape相同
+    assert self_atten(x).shape == (batch_size, dim_context, hidden_size)
+
+    assert mlp(x).shape == (batch_size, dim_context, hidden_size)
 
 
 if __name__ == '__main__':
+    time_step = 50
+    hidden_size = 1536  # 64 * 24
+    dim_context = 4096
+    batch_size = 2
     check_diffusion()

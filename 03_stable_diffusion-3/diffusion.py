@@ -81,7 +81,7 @@ class TimestepEmbedder(nn.Module):
         return embedding
 
     def forward(self, t: Tensor) -> Tensor:
-        # t: (batch_size, )
+        # t: (batch_size, ) -> (batch_size, hidden_size)
         t_freq = self.timestep_embedding(t, self.dim)
         t_emb = self.mlp(t_freq)
         return t_emb
@@ -122,16 +122,12 @@ class RMSNorm(torch.nn.Module):
 
 
 class SelfAttention(nn.Module):
-    ATTENTION_MODES = ("xformers", "torch", "torch-hb", "math", "debug")
+    """
+    正常 SelfAttention
+    """
 
-    def __init__(self,
-                 dim: int,
-                 num_heads: int = 8,
-                 qkv_bias: bool = False,
-                 attn_mode: str = "xformers",
-                 pre_only: bool = False,
-                 qk_norm: Optional[str] = None
-                 ):
+    def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False,
+                 pre_only: bool = False, qk_norm: Optional[str] = None):
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
@@ -139,8 +135,6 @@ class SelfAttention(nn.Module):
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         if not pre_only:
             self.proj = nn.Linear(dim, dim)
-        assert attn_mode in self.ATTENTION_MODES
-        self.attn_mode = attn_mode
         self.pre_only = pre_only
 
         if qk_norm == "rms":
@@ -156,7 +150,6 @@ class SelfAttention(nn.Module):
             raise ValueError(qk_norm)
 
     def pre_attention(self, x: Tensor):
-        B, L, C = x.shape
         qkv = self.qkv(x)
         qkv = qkv.reshape(qkv.shape[0], qkv.shape[1], 3, -1, self.head_dim).movedim(2, 0)
         q, k, v = qkv[0], qkv[1], qkv[2]
@@ -197,30 +190,25 @@ class SwiGLUFeedForward(nn.Module):
         return self.w2(nn.functional.silu(self.w1(x)) * self.w3(x))
 
 
+# 也是个attention
 class DismantledBlock(nn.Module):
-    """A DiT block with gated adaptive layer norm (adaLN) conditioning."""
-
-    ATTENTION_MODES = ("xformers", "torch", "torch-hb", "math", "debug")
-
-    def __init__(self,
-                 hidden_size: int,
+    def __init__(self, hidden_size: int,
                  num_heads: int,
                  mlp_ratio: float = 4.0,
-                 attn_mode: str = "xformers",
                  qkv_bias: bool = False,
                  pre_only: bool = False,
                  rmsnorm: bool = False,
                  scale_mod_only: bool = False,
                  swiglu: bool = False,
-                 qk_norm: Optional[str] = None,
+                 qk_norm: Optional[str] = None
                  ):
         super().__init__()
-        assert attn_mode in self.ATTENTION_MODES
+
         if not rmsnorm:
             self.norm1 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         else:
             self.norm1 = RMSNorm(hidden_size, elementwise_affine=False, eps=1e-6)
-        self.attn = SelfAttention(dim=hidden_size, num_heads=num_heads, qkv_bias=qkv_bias, attn_mode=attn_mode,
+        self.attn = SelfAttention(dim=hidden_size, num_heads=num_heads, qkv_bias=qkv_bias,
                                   pre_only=pre_only, qk_norm=qk_norm)
         if not pre_only:
             if not rmsnorm:
@@ -282,17 +270,24 @@ class DismantledBlock(nn.Module):
 
 
 class JointBlock(nn.Module):
-    """just a small wrapper to serve as a fsdp unit"""
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self, hidden_size: int,
+                 num_heads: int,
+                 mlp_ratio: float = 4.0,
+                 qkv_bias: bool = False,
+                 pre_only: bool = False,
+                 rmsnorm: bool = False,
+                 scale_mod_only: bool = False,
+                 swiglu: bool = False,
+                 qk_norm: Optional[str] = None):
         super().__init__()
-        pre_only = kwargs.pop("pre_only")
-        qk_norm = kwargs.pop("qk_norm", None)
-        self.context_block = DismantledBlock(*args, pre_only=pre_only, qk_norm=qk_norm, **kwargs)
-        self.x_block = DismantledBlock(*args, pre_only=False, qk_norm=qk_norm, **kwargs)
+
+        self.context_block = DismantledBlock(hidden_size, num_heads, mlp_ratio, qkv_bias,
+                                             pre_only, rmsnorm, scale_mod_only, swiglu, qk_norm)
+        self.x_block = DismantledBlock(hidden_size, num_heads, mlp_ratio, qkv_bias,
+                                       False, rmsnorm, scale_mod_only, swiglu, qk_norm)
 
     @staticmethod
-    def block_mixing(context, x, context_block, x_block, c):
+    def block_mixing(context, x, c, context_block, x_block):
         assert context is not None, "block_mixing called with None context"
         context_qkv, context_intermediates = context_block.pre_attention(context, c)
 
@@ -313,8 +308,8 @@ class JointBlock(nn.Module):
         x = x_block.post_attention(x_attn, *x_intermediates)
         return context, x
 
-    def forward(self, *args, **kwargs):
-        return self.block_mixing(*args, context_block=self.context_block, x_block=self.x_block, **kwargs)
+    def forward(self, context, x, c):
+        return self.block_mixing(context, x, c, context_block=self.context_block, x_block=self.x_block)
 
 
 class FinalLayer(nn.Module):
@@ -346,7 +341,6 @@ class MMDiT(nn.Module):
                  adm_in_channels: Optional[int] = None,
                  context_embedder_config: Optional[Dict] = None,
                  register_length: int = 0,
-                 attn_mode: str = "torch",
                  rmsnorm: bool = False,
                  scale_mod_only: bool = False,
                  swiglu: bool = False,
@@ -371,9 +365,7 @@ class MMDiT(nn.Module):
         # apply magic --> this defines a head_size of 64
         hidden_size = 64 * depth
         num_heads = depth
-
         self.num_heads = num_heads
-
         self.x_embedder = PatchEmbed(input_size, patch_size, in_channels, hidden_size, bias=True,
                                      strict_img_size=self.pos_embed_max_size is None)
         self.t_embedder = TimestepEmbedder(hidden_size)
@@ -399,13 +391,11 @@ class MMDiT(nn.Module):
         else:
             self.pos_embed = None
 
-        self.joint_blocks = nn.ModuleList(
-            [
-                JointBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, attn_mode=attn_mode,
-                           pre_only=i == depth - 1, rmsnorm=rmsnorm, scale_mod_only=scale_mod_only, swiglu=swiglu,
-                           qk_norm=qk_norm)
-                for i in range(depth)
-            ]
+        self.joint_blocks = nn.ModuleList([
+            JointBlock(hidden_size, num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias,
+                       pre_only=i == depth - 1, rmsnorm=rmsnorm, scale_mod_only=scale_mod_only, swiglu=swiglu,
+                       qk_norm=qk_norm)
+            for i in range(depth)]
         )
 
         self.final_layer = FinalLayer(hidden_size, patch_size, self.out_channels)
@@ -467,11 +457,11 @@ class MMDiT(nn.Module):
     def forward(self, x: Tensor, t: Tensor, y: Optional[Tensor] = None, context: Optional[Tensor] = None) -> Tensor:
         hw = x.shape[-2:]
         x = self.x_embedder(x) + self.cropped_pos_embed(hw)
-        c = self.t_embedder(t)  # (N, D)
+        c = self.t_embedder(t)
         if y is not None:
-            y = self.y_embedder(y)  # (N, D)
-            c = c + y  # (N, D)
+            y = self.y_embedder(y)
+            c = c + y
         context = self.context_embedder(context)
         x = self.forward_core_with_concat(x, c, context)
-        x = self.unpatchify(x, hw=hw)  # (N, out_channels, H, W)
+        x = self.unpatchify(x, hw=hw)
         return x
