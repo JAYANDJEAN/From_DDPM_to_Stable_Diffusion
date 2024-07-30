@@ -1,50 +1,10 @@
 import torch
+import torch.nn as nn
 from diffusers import StableDiffusion3Pipeline
-
-
-class SDTokenizer:
-    def __init__(self, max_length=77, pad_with_end=True, tokenizer=None, has_start_token=True, pad_to_max_length=True,
-                 min_length=None):
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-        self.min_length = min_length
-        empty = self.tokenizer('')["input_ids"]
-        if has_start_token:
-            self.tokens_start = 1
-            self.start_token = empty[0]
-            self.end_token = empty[1]
-        else:
-            self.tokens_start = 0
-            self.start_token = None
-            self.end_token = empty[0]
-        self.pad_with_end = pad_with_end
-        self.pad_to_max_length = pad_to_max_length
-        vocab = self.tokenizer.get_vocab()
-        self.inv_vocab = {v: k for k, v in vocab.items()}
-        self.max_word_length = 8
-
-    def tokenize_with_weights(self, text: str):
-        """
-        Tokenize the text, with weight values - presume 1.0 for all and ignore other features here.
-        The details aren't relevant for a reference impl, and weights themselves has weak effect on SD3.
-        """
-        if self.pad_with_end:
-            pad_token = self.end_token
-        else:
-            pad_token = 0
-        batch = []
-        if self.start_token is not None:
-            batch.append((self.start_token, 1.0))
-        to_tokenize = text.replace("\n", " ").split(' ')
-        to_tokenize = [x for x in to_tokenize if x != ""]
-        for word in to_tokenize:
-            batch.extend([(t, 1) for t in self.tokenizer(word)["input_ids"][self.tokens_start:-1]])
-        batch.append((self.end_token, 1.0))
-        if self.pad_to_max_length:
-            batch.extend([(pad_token, 1.0)] * (self.max_length - len(batch)))
-        if self.min_length is not None and len(batch) < self.min_length:
-            batch.extend([(pad_token, 1.0)] * (self.min_length - len(batch)))
-        return [batch]
+from diffusion import MMDiT, TimestepEmbedder
+from modelsummary import summary
+import math
+import matplotlib.pyplot as plt
 
 
 def check_pipeline():
@@ -63,30 +23,32 @@ def check_pipeline():
     image.save("output.png")
 
 
-def check_clip():
-    from transformers import AutoTokenizer, CLIPTextModelWithProjection
-    model = CLIPTextModelWithProjection.from_pretrained("openai/clip-vit-large-patch14")
-    tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
-    inputs = tokenizer(["a"], padding=True, return_tensors="pt")
-    print(inputs)
-    outputs = model(**inputs)
+def check_diffusion():
+    patch_size = 2
+    depth = 24
+    num_patches = 36864
+    pos_embed_max_size = 192
+    adm_in_channels = 2048
+    context_embedder_config = {'target': 'torch.nn.Linear', 'params': {'in_features': 4096, 'out_features': 1536}}
+    diffusion = MMDiT(pos_embed_scaling_factor=None, pos_embed_offset=None,
+                      pos_embed_max_size=pos_embed_max_size, patch_size=patch_size, in_channels=16,
+                      depth=depth, num_patches=num_patches, adm_in_channels=adm_in_channels,
+                      context_embedder_config=context_embedder_config)
 
-    text_embeds = outputs.text_embeds
-    print(text_embeds[0, 0:5])
-    model = CLIPTextModelWithProjection.from_pretrained("models/clip_l")
-    with torch.no_grad():
-        if hasattr(model, 'text_projection') and hasattr(model.text_projection, 'weight'):
-            model.text_projection.weight.copy_(torch.eye(768))
-        else:
-            print("text_projection.weight not found in model state_dict")
-    outputs = model(**inputs)
-    text_embeds = outputs.text_embeds
-    print(text_embeds[0, 0:5])
+    x = torch.randn((2, 16, 128, 128), dtype=torch.float32)
+    y = torch.randn((2, 2048), dtype=torch.float32)
+    t = torch.randint(low=1, high=50, size=(2,))
+    context = torch.randn((2, 154, 4096), dtype=torch.float32)
 
-    old_tensor = torch.load('tensor_out_cat.pt')
-    print(old_tensor.shape)
-    print(old_tensor[0, 0:10, 0:5])
+    summary(diffusion, x, t, y, context, show_input=True)
+
+
+def check_parts():
+    t = torch.randint(low=1, high=50, size=(2,))
+    t_embedder = TimestepEmbedder(512)
+    print(t_embedder(t, dtype=torch.float32).shape)
+    print(t_embedder(t, dtype=torch.float32)[0, 0:5])
 
 
 if __name__ == '__main__':
-    check_clip()
+    check_diffusion()
