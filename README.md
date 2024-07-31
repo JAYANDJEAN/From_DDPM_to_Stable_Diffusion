@@ -18,6 +18,7 @@
 
 1. inference代码，代码很繁琐，但也能跑吧。没兴趣优化。放弃了。
 2. https://github.com/Stability-AI/sd3-ref
+3. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
 3. https://github.com/comfyanonymous/ComfyUI
 
 
