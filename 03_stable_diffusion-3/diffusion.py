@@ -448,7 +448,9 @@ class MMDiT(nn.Module):
 
         # context is B, L', D
         # x is B, L, D
-        for block in self.joint_blocks:
+        print(f"pooled_prompt_embeds shape: {c_mod.shape}")
+        for i, block in enumerate(self.joint_blocks):
+            print(f"round {i}: latent shape: {x.shape}, prompt_embeds: {context.shape}")
             context, x = block(context, x, c=c_mod)
 
         x = self.final_layer(x, c_mod)  # (N, T, patch_size ** 2 * out_channels)

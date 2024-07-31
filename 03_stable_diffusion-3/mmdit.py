@@ -1,12 +1,9 @@
-### This file contains impls for MM-DiT, the core model component of SD3
-
 import math
 from typing import Dict, Optional
-import numpy as np
 import torch
 import torch.nn as nn
 from einops import rearrange, repeat
-from other_impls import attention, Mlp
+from utils import attention, Mlp
 
 
 class PatchEmbed(nn.Module):
@@ -56,63 +53,6 @@ def modulate(x, shift, scale):
     if shift is None:
         shift = torch.zeros_like(scale)
     return x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
-
-
-#################################################################################
-#                   Sine/Cosine Positional Embedding Functions                  #
-#################################################################################
-
-
-def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=0, scaling_factor=None, offset=None):
-    """
-    grid_size: int of the grid height and width
-    return:
-    pos_embed: [grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)
-    """
-    grid_h = np.arange(grid_size, dtype=np.float32)
-    grid_w = np.arange(grid_size, dtype=np.float32)
-    grid = np.meshgrid(grid_w, grid_h)  # here w goes first
-    grid = np.stack(grid, axis=0)
-    if scaling_factor is not None:
-        grid = grid / scaling_factor
-    if offset is not None:
-        grid = grid - offset
-    grid = grid.reshape([2, 1, grid_size, grid_size])
-    pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
-    if cls_token and extra_tokens > 0:
-        pos_embed = np.concatenate([np.zeros([extra_tokens, embed_dim]), pos_embed], axis=0)
-    return pos_embed
-
-
-def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
-    assert embed_dim % 2 == 0
-    # use half of dimensions to encode grid_h
-    emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
-    emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
-    emb = np.concatenate([emb_h, emb_w], axis=1)  # (H*W, D)
-    return emb
-
-
-def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
-    """
-    embed_dim: output dimension for each position
-    pos: a list of positions to be encoded: size (M,)
-    out: (M, D)
-    """
-    assert embed_dim % 2 == 0
-    omega = np.arange(embed_dim // 2, dtype=np.float64)
-    omega /= embed_dim / 2.0
-    omega = 1.0 / 10000 ** omega  # (D/2,)
-    pos = pos.reshape(-1)  # (M,)
-    out = np.einsum("m,d->md", pos, omega)  # (M, D/2), outer product
-    emb_sin = np.sin(out)  # (M, D/2)
-    emb_cos = np.cos(out)  # (M, D/2)
-    return np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
-
-
-#################################################################################
-#               Embedding Layers for Timesteps and Class Labels                 #
-#################################################################################
 
 
 class TimestepEmbedder(nn.Module):
@@ -170,11 +110,6 @@ class VectorEmbedder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.mlp(x)
-
-
-#################################################################################
-#                                 Core DiT Model                                #
-#################################################################################
 
 
 def split_qkv(qkv, head_dim):
@@ -503,8 +438,6 @@ class MMDiT(nn.Module):
             device=None,
     ):
         super().__init__()
-        print(
-            f"mmdit initializing with: {input_size=}, {patch_size=}, {in_channels=}, {depth=}, {mlp_ratio=}, {learn_sigma=}, {adm_in_channels=}, {context_embedder_config=}, {register_length=}, {attn_mode=}, {rmsnorm=}, {scale_mod_only=}, {swiglu=}, {out_channels=}, {pos_embed_scaling_factor=}, {pos_embed_offset=}, {pos_embed_max_size=}, {num_patches=}, {qk_norm=}, {qkv_bias=}, {dtype=}, {device=}")
         self.dtype = dtype
         self.learn_sigma = learn_sigma
         self.in_channels = in_channels
@@ -602,37 +535,54 @@ class MMDiT(nn.Module):
         return imgs
 
     def forward_core_with_concat(self, x: torch.Tensor, c_mod: torch.Tensor,
-                                 context: Optional[torch.Tensor] = None) -> torch.Tensor:
+                                 context: Optional[torch.Tensor] = None, debug: bool = False) -> torch.Tensor:
         if self.register_length > 0:
             context = torch.cat((repeat(self.register, "1 ... -> b ...", b=x.shape[0]),
                                  context if context is not None else torch.Tensor([]).type_as(x)), 1)
 
         # context is B, L', D
         # x is B, L, D
-        for block in self.joint_blocks:
+        if debug:
+            print("Looping...")
+        for i, block in enumerate(self.joint_blocks):
             context, x = block(context, x, c=c_mod)
+            if debug:
+                print(
+                    f"block {i}: latent shape: {x.shape if x is not None else None}, prompt_embeds shape: {context.shape if context is not None else None}")
 
         x = self.final_layer(x, c_mod)  # (N, T, patch_size ** 2 * out_channels)
         return x
 
     def forward(self, x: torch.Tensor, t: torch.Tensor, y: Optional[torch.Tensor] = None,
-                context: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """
-        Forward pass of DiT.
-        x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
-        t: (N,) tensor of diffusion timesteps
-        y: (N,) tensor of class labels
-        """
+                context: Optional[torch.Tensor] = None, debug: bool = False) -> torch.Tensor:
+        if debug:
+            print('=' * 50)
+            print("MMDiT Loop for Step 0...")
+            print(f"input latent shape: {x.shape}")
+            print(f"input time shape: {t.shape}")
+            print(f"input pooled_prompt_embeds shape: {y.shape}")
+            print(f"input prompt_embeds shape: {context.shape}")
         hw = x.shape[-2:]
         x = self.x_embedder(x) + self.cropped_pos_embed(hw)
-        c = self.t_embedder(t, dtype=x.dtype)  # (N, D)
+
+        c = self.t_embedder(t, dtype=x.dtype)
+        if debug:
+            print(f"after PatchEmbedding and PositionEmbedding latent shape: {x.shape}")
+            print(f"after TimeEmbedding time shape: {c.shape}")
         if y is not None:
-            y = self.y_embedder(y)  # (N, D)
-            c = c + y  # (N, D)
+            y = self.y_embedder(y)
+            c = c + y
+        if debug:
+            print(f"time_embedding + pooled_prompt_embedding shape: {c.shape}")
 
         context = self.context_embedder(context)
-
-        x = self.forward_core_with_concat(x, c, context)
-
-        x = self.unpatchify(x, hw=hw)  # (N, out_channels, H, W)
+        if debug:
+            print(f"after Liner prompt_embeds shape: {context.shape}")
+        x = self.forward_core_with_concat(x, c, context, debug)
+        if debug:
+            print(f"after looping latent shape: {x.shape}")
+        x = self.unpatchify(x, hw=hw)
+        if debug:
+            print(f"after unpatchify latent shape: {x.shape}")
+            print('=' * 50)
         return x
