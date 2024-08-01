@@ -13,8 +13,8 @@ def check_diffusion():
     timestep = torch.randint(low=1, high=50, size=(batch_size * 2,))
     prompt_embeds = torch.randn((batch_size * 2, 154, prompt_dim), dtype=torch.float32)
 
-    # diffusion_out = diffusion(latent, timestep, pooled_prompt_embeds, prompt_embeds)
-    summary(diffusion, latent, timestep, pooled_prompt_embeds, prompt_embeds, show_input=True)
+    diffusion_out = diffusion(latent, timestep, pooled_prompt_embeds, prompt_embeds)
+    # summary(diffusion, latent, timestep, pooled_prompt_embeds, prompt_embeds, show_input=True)
 
 
 def check_parts():

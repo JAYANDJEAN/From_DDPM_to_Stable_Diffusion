@@ -108,7 +108,8 @@ class BaseModel(torch.nn.Module):
     def apply_model(self, x, sigma, c_crossattn=None, y=None, debug=False):
         dtype = self.get_dtype()
         timestep = self.model_sampling.timestep(sigma).float()
-        model_output = self.diffusion_model(x.to(dtype), timestep, context=c_crossattn.to(dtype), y=y.to(dtype), debug=debug).float()
+        model_output = self.diffusion_model(x.to(dtype), timestep, context=c_crossattn.to(dtype), y=y.to(dtype),
+                                            debug=debug).float()
         return self.model_sampling.calculate_denoised(sigma, model_output, x)
 
     def forward(self, *args, **kwargs):
@@ -308,20 +309,29 @@ class SD3Inferencer:
         tokens = self.tokenizer.tokenize_with_weights(prompt)
         l_out, l_pooled = self.clip_l.model.encode_token_weights(tokens["l"])
         print(f"CLIP/L prompt embeds shape: {l_out.shape}")
+        # CLIP/L prompt embeds shape: torch.Size([1, 77, 768])
         print(f"CLIP/L pooled prompt embeds shape: {l_pooled.shape}")
+        # CLIP/L pooled prompt embeds shape: torch.Size([1, 768])
         g_out, g_pooled = self.clip_g.model.encode_token_weights(tokens["g"])
         print(f"CLIP/G prompt embeds shape: {g_out.shape}")
+        # CLIP/G prompt embeds shape: torch.Size([1, 77, 1280])
         print(f"CLIP/G pooled prompt embeds shape: {g_pooled.shape}")
+        # CLIP/G pooled prompt embeds shape: torch.Size([1, 1280])
         t5_out, t5_pooled = self.t5xxl.model.encode_token_weights(tokens["t5xxl"])
         print(f"T5 prompt embeds shape: {t5_out.shape}")
+        # T5 prompt embeds shape: torch.Size([1, 77, 4096])
         print(f"T5 pooled prompt embeds is None!")
+        # T5 pooled prompt embeds is None!
         lg_out = torch.cat([l_out, g_out], dim=-1)
         print(f"CLIP/L and CLIP/G concat prompt embeds shape: {lg_out.shape}")
+        # CLIP/L and CLIP/G concat prompt embeds shape: torch.Size([1, 77, 2048])
         lg_out = torch.nn.functional.pad(lg_out, (0, 4096 - lg_out.shape[-1]))
         out = torch.cat([lg_out, t5_out], dim=-2)
         print(f"prompt embeds shape: {out.shape}")
+        # prompt embeds shape: torch.Size([1, 154, 4096])
         pooled = torch.cat((l_pooled, g_pooled), dim=-1)
         print(f"pooled prompt embeds shape: {pooled.shape}")
+        # pooled prompt embeds shape: torch.Size([1, 2048])
         return out, pooled
 
     def max_denoise(self, sigmas):
@@ -341,6 +351,7 @@ class SD3Inferencer:
         self.sd3.model = self.sd3.model.cuda()
         noise = self.get_noise(seed, latent).cuda()
         print(f"noise shape: {noise.shape}, should be same to latent shape")
+        # noise shape: torch.Size([1, 16, 128, 128]), should be same to latent shape
         sigmas = self.get_sigmas(self.sd3.model.model_sampling, steps).cuda()
         print(f"sigmas: {sigmas}")
         print(f"sigmas length: {len(sigmas)}")
@@ -348,13 +359,15 @@ class SD3Inferencer:
         conditioning = self.fix_cond(conditioning)
         neg_cond = self.fix_cond(neg_cond)
         extra_args = {"cond": conditioning, "uncond": neg_cond, "cond_scale": cfg_scale}
-        print("Because run cond and uncond in a batch together, so first dim of tensor doubled.")
         noise_scaled = self.sd3.model.model_sampling.noise_scaling(sigmas[0], noise, latent, self.max_denoise(sigmas))
         print(f"noise_scaled latent shape: {noise_scaled.shape}")
+        # noise_scaled latent shape: torch.Size([1, 16, 128, 128])
         latent = sample_euler(CFGDenoiser(self.sd3.model), noise_scaled, sigmas, extra_args=extra_args)
         print(f"latent out of diffusion model: {latent.shape}")
+        # latent out of diffusion model: torch.Size([1, 16, 128, 128])
         latent = SD3LatentFormat().process_out(latent)
         print(f"latent format: {latent.shape}")
+        # latent format: torch.Size([1, 16, 128, 128])
         self.sd3.model = self.sd3.model.cpu()
         print("Sampling done")
         return latent
@@ -379,9 +392,11 @@ class SD3Inferencer:
         print("Step 3: Decoding latent to image...")
         latent = latent.cuda()
         print(f"latent shape: {latent.shape}")
+        # latent shape: torch.Size([1, 16, 128, 128])
         self.vae.model = self.vae.model.cuda()
         image = self.vae.model.decode(latent)
         print(f"image shape: {image.shape}")
+        # image shape: torch.Size([1, 3, 1024, 1024])
         image = image.float()
         self.vae.model = self.vae.model.cpu()
         image = torch.clamp((image + 1.0) / 2.0, min=0.0, max=1.0)[0]
@@ -397,6 +412,7 @@ class SD3Inferencer:
         print("\n" + '-' * 90)
         print("Start Generating...")
         print(f"latent input shape: {latent.shape}")
+        # latent input shape: torch.Size([1, 16, 128, 128])
 
         if init_image:
             image_data = Image.open(init_image)

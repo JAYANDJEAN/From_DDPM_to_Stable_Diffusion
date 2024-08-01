@@ -100,10 +100,6 @@ class RMSNorm(torch.nn.Module):
 
 
 class SelfAttention(nn.Module):
-    """
-    正常 SelfAttention
-    """
-
     def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False,
                  pre_only: bool = False, qk_norm: Optional[str] = None):
         super().__init__()
@@ -141,6 +137,7 @@ class SelfAttention(nn.Module):
         return x
 
     def forward(self, x: Tensor) -> Tensor:
+        # 这里也没调用！
         (q, k, v) = self.pre_attention(x)
         x = attention(q, k, v, self.num_heads)
         x = self.post_attention(x)
@@ -188,25 +185,25 @@ class DismantledBlock(nn.Module):
         self.attn = SelfAttention(dim=hidden_size, num_heads=num_heads, qkv_bias=qkv_bias,
                                   pre_only=pre_only, qk_norm=qk_norm)
         if not pre_only:
-            if not rmsnorm:
-                self.norm2 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
-            else:
+            if rmsnorm:
                 self.norm2 = RMSNorm(hidden_size, elementwise_affine=False, eps=1e-6)
+            else:
+                self.norm2 = nn.LayerNorm(hidden_size, elementwise_affine=False, eps=1e-6)
         mlp_hidden_dim = int(hidden_size * mlp_ratio)
         if not pre_only:
-            if not swiglu:
+            if swiglu:
+                self.mlp = SwiGLUFeedForward(dim=hidden_size, hidden_dim=mlp_hidden_dim, multiple_of=256)
+            else:
                 self.mlp = nn.Sequential(
                     nn.Linear(hidden_size, mlp_hidden_dim),
                     nn.GELU(approximate="tanh"),
                     nn.Linear(mlp_hidden_dim, hidden_size)
                 )
-            else:
-                self.mlp = SwiGLUFeedForward(dim=hidden_size, hidden_dim=mlp_hidden_dim, multiple_of=256)
         self.scale_mod_only = scale_mod_only
-        if not scale_mod_only:
-            n_mods = 6 if not pre_only else 2
-        else:
+        if scale_mod_only:  # False
             n_mods = 4 if not pre_only else 1
+        else:
+            n_mods = 6 if not pre_only else 2
         self.adaLN_modulation = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, n_mods * hidden_size))
         self.pre_only = pre_only
 
@@ -214,21 +211,21 @@ class DismantledBlock(nn.Module):
         # x could be latent or prompt_embeds
         assert x is not None, "pre_attention called with None input"
         if not self.pre_only:
-            if not self.scale_mod_only:
-                shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
-                    self.adaLN_modulation(time_embeds).chunk(6, dim=1))
-            else:
+            if self.scale_mod_only:
                 shift_msa = None
                 shift_mlp = None
                 scale_msa, gate_msa, scale_mlp, gate_mlp = self.adaLN_modulation(time_embeds).chunk(4, dim=1)
+            else:
+                shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
+                    self.adaLN_modulation(time_embeds).chunk(6, dim=1))
             qkv = self.attn.pre_attention(modulate(self.norm1(x), shift_msa, scale_msa))
             return qkv, (x, gate_msa, shift_mlp, scale_mlp, gate_mlp)
         else:
-            if not self.scale_mod_only:
-                shift_msa, scale_msa = self.adaLN_modulation(time_embeds).chunk(2, dim=1)
-            else:
+            if self.scale_mod_only:
                 shift_msa = None
                 scale_msa = self.adaLN_modulation(time_embeds)
+            else:
+                shift_msa, scale_msa = self.adaLN_modulation(time_embeds).chunk(2, dim=1)
             qkv = self.attn.pre_attention(modulate(self.norm1(x), shift_msa, scale_msa))
             return qkv, None
 
@@ -241,6 +238,7 @@ class DismantledBlock(nn.Module):
 
     def forward(self, x: Tensor, time_embed: Tensor) -> Tensor:
         # x could be latent or prompt_embeds
+        # 这里并没有被调用！
         assert not self.pre_only
         (q, k, v), intermediates = self.pre_attention(x, time_embed)
         attn = attention(q, k, v, self.attn.num_heads)
@@ -429,16 +427,35 @@ class MMDiT(nn.Module):
         # latent: (batch_size, num_channel, height, width)
         # time: (batch_size, )
         # h = w = 128
-        hw = latent.shape[-2:]
+        print('=' * 50)
+        print("MMDiT Loop for Step 0...")
+        print("Because run cond and uncond in a batch together, so first dim of tensor doubled.")
+        print(f"input latent shape: {latent.shape}")
         # input latent shape: torch.Size([2, 16, 128, 128])
+        print(f"input time shape: {time.shape}")
+        print(f"input pooled_prompt_embeds shape: {pooled_prompt_embeds.shape}")
+        print(f"input prompt_embeds shape: {prompt_embeds.shape}")
+        hw = latent.shape[-2:]
+
         latent = self.latent_patch_embedder(latent) + self.cropped_pos_embed(hw)
-        # after PatchEmbedding and PositionEmbedding latent shape: torch.Size([2, 4096, 1536])
+
         time_embeds = self.time_embedder(time)
+        print(f"after PatchEmbedding and PositionEmbedding latent shape: {latent.shape}")
+        # hidden_size = 24(depth) * 64 = 1536
+        # because conv2D (128 / 2)**2 = 4096
+        # after PatchEmbedding and PositionEmbedding latent shape: torch.Size([2, 4096, 1536])
+        print(f"after TimeEmbedding time shape: {time_embeds.shape}")
         if pooled_prompt_embeds is not None:
             pooled_prompt = self.pooled_prompt_embedder(pooled_prompt_embeds)
+            print(f"after pooled_prompt_embedding pooled_prompt shape: {pooled_prompt.shape}")
             time_embeds = time_embeds + pooled_prompt
+            print(f"time_embedding + pooled_prompt_embedding shape: {time_embeds.shape}")
         prompt_embeds = self.prompt_embedder(prompt_embeds)
+        print(f"after Liner prompt_embeds shape: {prompt_embeds.shape}")
 
         latent = self.forward_core_with_concat(latent, time_embeds, prompt_embeds)
+        print(f"after looping latent shape: {latent.shape}")
         latent = self.unpatchify(latent, hw=hw)
+        print(f"after unpatchify latent shape: {latent.shape}")
+        print('=' * 50)
         return latent

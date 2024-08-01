@@ -558,6 +558,7 @@ class MMDiT(nn.Module):
         if debug:
             print('=' * 50)
             print("MMDiT Loop for Step 0...")
+            print("Because run cond and uncond in a batch together, so first dim of tensor doubled.")
             print(f"input latent shape: {x.shape}")
             print(f"input time shape: {t.shape}")
             print(f"input pooled_prompt_embeds shape: {y.shape}")
