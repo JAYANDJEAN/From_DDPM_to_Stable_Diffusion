@@ -417,6 +417,7 @@ class MMDiT(nn.Module):
                   f"prompt_embeds shape: {prompt_embeds.shape if prompt_embeds is not None else None}")
 
         latent = self.final_layer(latent, time_embeds)
+        print(f"after final_layer modulate latent shape: {latent.shape}")
         return latent
 
     def forward(self,
@@ -424,38 +425,51 @@ class MMDiT(nn.Module):
                 time: Tensor,
                 pooled_prompt_embeds: Optional[Tensor] = None,
                 prompt_embeds: Optional[Tensor] = None) -> Tensor:
-        # latent: (batch_size, num_channel, height, width)
-        # time: (batch_size, )
-        # h = w = 128
         print('=' * 50)
         print("MMDiT Loop for Step 0...")
         print("Because run cond and uncond in a batch together, so first dim of tensor doubled.")
         print(f"input latent shape: {latent.shape}")
         # input latent shape: torch.Size([2, 16, 128, 128])
         print(f"input time shape: {time.shape}")
+        # input time shape: torch.Size([2])
         print(f"input pooled_prompt_embeds shape: {pooled_prompt_embeds.shape}")
+        # input pooled_prompt_embeds shape: torch.Size([2, 2048])
+        # CLIP/L + CLIP/G 的维度之和 768 + 1280 = 2048
         print(f"input prompt_embeds shape: {prompt_embeds.shape}")
+        # input prompt_embeds shape: torch.Size([2, 154, 4096])
+        # concat CLIP/L + CLIP/G, T5; 77 + 77 = 154
+        # 4096 是 T5 的维度
         hw = latent.shape[-2:]
 
         latent = self.latent_patch_embedder(latent) + self.cropped_pos_embed(hw)
-
-        time_embeds = self.time_embedder(time)
         print(f"after PatchEmbedding and PositionEmbedding latent shape: {latent.shape}")
         # hidden_size = 24(depth) * 64 = 1536
         # because conv2D (128 / 2)**2 = 4096
         # after PatchEmbedding and PositionEmbedding latent shape: torch.Size([2, 4096, 1536])
+
+        time_embeds = self.time_embedder(time)
         print(f"after TimeEmbedding time shape: {time_embeds.shape}")
+        # after TimeEmbedding time shape: torch.Size([2, 1536])
+        # hidden_size = 1536
+
         if pooled_prompt_embeds is not None:
             pooled_prompt = self.pooled_prompt_embedder(pooled_prompt_embeds)
             print(f"after pooled_prompt_embedding pooled_prompt shape: {pooled_prompt.shape}")
+            # after pooled_prompt_embedding pooled_prompt shape: torch.Size([2, 1536])
+            # VectorEmbedder(adm_in_channels, hidden_size)
             time_embeds = time_embeds + pooled_prompt
             print(f"time_embedding + pooled_prompt_embedding shape: {time_embeds.shape}")
+            # time_embedding + pooled_prompt_embedding shape: torch.Size([2, 1536])
         prompt_embeds = self.prompt_embedder(prompt_embeds)
         print(f"after Liner prompt_embeds shape: {prompt_embeds.shape}")
+        # after Liner prompt_embeds shape: torch.Size([2, 154, 1536])
+        # 压缩了！
 
         latent = self.forward_core_with_concat(latent, time_embeds, prompt_embeds)
         print(f"after looping latent shape: {latent.shape}")
+        # after looping latent shape: torch.Size([2, 4096, 64])
         latent = self.unpatchify(latent, hw=hw)
         print(f"after unpatchify latent shape: {latent.shape}")
+        # after unpatchify latent shape: torch.Size([2, 16, 128, 128])
         print('=' * 50)
         return latent
