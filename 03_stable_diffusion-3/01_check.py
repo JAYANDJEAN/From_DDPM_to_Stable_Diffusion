@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from diffusers import StableDiffusion3Pipeline
+from diffusers import StableDiffusion3Pipeline, FluxPipeline
 from diffusion import *
 from modelsummary import summary
 

@@ -1,11 +1,12 @@
 from stable_diffusion_pytorch import tokenizer, model_loader, util
 from stable_diffusion_pytorch.samplers import KLMSSampler
-from stable_diffusion_pytorch.diffusion import AttentionBlock, ResidualBlock, TimeEmbedding, UNet
+from stable_diffusion_pytorch.diffusion import AttentionBlock, ResidualBlock, TimeEmbedding, UNet, SwitchSequential
 import torch
 from tqdm import tqdm
 from PIL import Image
 from modelsummary import summary
 import torch.nn as nn
+import safetensors
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 prompts = ["a photograph of an astronaut riding a horse"]
@@ -90,5 +91,26 @@ def check_diffusion():
     summary(diffusion, latent, context, time_embedding, show_input=True)
 
 
+def check_tensor():
+    file_path = './data/ckpt/diffusion.pt'
+    model = torch.load(file_path)
+
+    for name, param in model.items():
+        print(f"Layer name: {name}")
+        print(f"Shape: {param.shape}")
+        print(f"Dtype: {param.dtype}")
+        print(f"Data (first 5 elements): {param.flatten()[:5]}\n")
+
+
+def check_parts():
+    model = SwitchSequential(ResidualBlock(320, 320), AttentionBlock(8, 40))
+    latent = torch.randn((1, 320, 64, 64), dtype=torch.float32)
+    context = torch.randn((2, 77, 768), dtype=torch.float32)
+    time = TimeEmbedding(320)(torch.randn((1, 320), dtype=torch.float32))
+    output = model(latent, context, time)
+    print(output.shape)
+    summary(model, latent, context, time, show_input=True)
+
+
 if __name__ == '__main__':
-    check_diffusion()
+    check_parts()
