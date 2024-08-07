@@ -20,6 +20,7 @@
 ## Stable Diffusion 3
 
 1. Stable Diffusion 3 架构示意图如下：
+   1. ![sd3](00_assets/image/sd3.png)
 2. inference代码可参考：
    1. https://github.com/Stability-AI/sd3-ref
    2. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
