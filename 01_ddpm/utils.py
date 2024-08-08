@@ -4,9 +4,10 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import LRScheduler
 
 
-def denormalize(tensor, mean, std):
-    mean = torch.tensor(mean).view(1, 3, 1, 1)
-    std = torch.tensor(std).view(1, 3, 1, 1)
+def denormalize(tensor, mean, std, device):
+    mean = torch.tensor(mean).view(1, 3, 1, 1).to(device)
+    std = torch.tensor(std).view(1, 3, 1, 1).to(device)
+    tensor = tensor.to(device)
     return tensor * std + mean
 
 
