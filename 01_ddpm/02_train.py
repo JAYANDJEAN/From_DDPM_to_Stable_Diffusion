@@ -6,23 +6,27 @@ import torch
 import torch.optim as optim
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, ToTensor, Normalize
-from torchvision.datasets import CIFAR10
 from torchvision.utils import save_image
+from torchvision import datasets, transforms
 
-from utils import SamplerDDPM, TrainerDDPM, GradualWarmupScheduler
+from utils import SamplerDDPM, TrainerDDPM, GradualWarmupScheduler, denormalize
 from unet import UNet
 
 
 def train(config: Dict):
     print("Model Training...............")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"use device: {device}")
 
-    dataset = CIFAR10(root='../00_assets/datasets', train=True, download=True,
-                      transform=Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
-    dataloader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=True, drop_last=True, pin_memory=True)
+    transform = transforms.Compose([
+        transforms.Resize((128, 128)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=means, std=stds)
+    ])
+    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=config["batch_size"], shuffle=True, num_workers=4)
     _, batch = next(enumerate(dataloader))
-    img_batch = torch.clip(batch[0] * 0.5 + 0.5, 0, 1)
+    img_batch = torch.clip(denormalize(batch[0].clone(), means, stds), 0, 1)
     save_image(img_batch, os.path.join(config["image_dir"], config["raw_name"]), nrow=config["nrow"])
 
     net_model = UNet(channel_img=config["img_channel"], channel_base=config["channel"],
@@ -86,7 +90,7 @@ def generate(config: Dict):
             img_noisy = torch.randn(size=[config["num_class"] * config["nrow"], config["img_channel"],
                                           config["img_size"], config["img_size"]], device=device)
             img_sample = sampler(img_noisy, labels)
-            save_image(tensor=img_sample * 0.5 + 0.5,
+            save_image(tensor=denormalize(img_sample, means, stds),
                        fp=os.path.join(config["image_dir"], f"img_generate_{i}.png"),
                        nrow=config["nrow"])
             print(f"img_generate_{i}.png is done!")
@@ -95,7 +99,7 @@ def generate(config: Dict):
 if __name__ == '__main__':
     modelConfig = {
         "epoch": 70,
-        "batch_size": 128,
+        "batch_size": 64,
         "T": 500,
         "channel": 128,
         "channel_mult": [1, 2, 2, 2],
@@ -109,16 +113,19 @@ if __name__ == '__main__':
         "img_size": 32,
         "grad_clip": 1.,
         "w": 1.8,
-        "nrow": 10,
-        "num_class": 10,
-        "model_dir": "../00_assets/model_cifar10/",
-        "image_dir": "../00_assets/img_cifar10/",
+        "nrow": 8,
+        "num_class": 3,
+        "model_dir": "../00_assets/animal3_model/",
+        "image_dir": "../00_assets/animal3_image/",
         "training_weight": None,
         "raw_name": "img_raw.png"
     }
 
+    means = [0.485, 0.456, 0.406]
+    stds = [0.229, 0.224, 0.225]
+
     os.makedirs(modelConfig["model_dir"], exist_ok=True)
     os.makedirs(modelConfig["image_dir"], exist_ok=True)
 
-    # train(modelConfig)
+    train(modelConfig)
     # generate(modelConfig)

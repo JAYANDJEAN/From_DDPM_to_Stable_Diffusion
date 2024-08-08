@@ -3,6 +3,10 @@ from unet import UNet
 from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from torchvision.utils import save_image
 
 torch.manual_seed(0)
 batch_size = 128
@@ -62,5 +66,24 @@ def check_unet_output():
     print(f"\nnumber of parameters: {sum([p.numel() for p in unet.parameters()])}")
 
 
+def check_animal_faces():
+    means = [0.485, 0.456, 0.406]
+    stds = [0.229, 0.224, 0.225]
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=means, std=stds)
+    ])
+    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=36, shuffle=True, num_workers=4)
+
+    for images, labels in dataloader:
+        print(images.shape)
+        save_image(tensor=denormalize(images.clone(), means, stds),
+                   fp=f"../00_assets/image/animal_faces.png",
+                   nrow=6)
+        break
+
+
 if __name__ == '__main__':
-    visual_alpha()
+    check_animal_faces()

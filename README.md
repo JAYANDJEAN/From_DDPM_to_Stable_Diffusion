@@ -8,6 +8,12 @@
    2. https://github.com/Michedev/DDPMs-Pytorch/tree/master
    3. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
    4. https://github.com/abarankab/DDPM/tree/main
+   5. https://www.kaggle.com/datasets/joaopauloschuler/cifar10-64x64-resized-via-cai-super-resolution
+   6. Denoising Diffusion Probabilistic Models 
+   7. Improved Denoising Diffusion Probabilistic Models
+   8. Classifier-Free Diffusion Guidance
+   9. https://www.kaggle.com/datasets/humairmunir/gender-recognizer
+   10. https://www.kaggle.com/datasets/alessiocorrado99/animals10
 
 ## Stable Diffusion 1
 
