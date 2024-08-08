@@ -115,8 +115,8 @@ if __name__ == '__main__':
         "w": 1.8,
         "nrow": 8,
         "num_class": 3,
-        "model_dir": "../00_assets/animal3_model/",
-        "image_dir": "../00_assets/animal3_image/",
+        "model_dir": "../00_assets/model_animal3/",
+        "image_dir": "../00_assets/image_animal3/",
         "training_weight": None,
         "raw_name": "img_raw.png"
     }

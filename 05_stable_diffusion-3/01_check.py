@@ -6,6 +6,7 @@ from modelsummary import summary
 from sd3_infer import SD3Inferencer
 
 
+@torch.no_grad()
 def demo():
     # Note: Sigma shift value, publicly released models use 3.0
     SHIFT = 3.0
@@ -20,7 +21,7 @@ def demo():
     # If init_image is given, this is the percentage of denoising steps to run
     # (1.0 = full denoise, 0.0 = no denoise at all)
     DENOISE = 0.6
-    OUTPUT = "output.png"
+    OUTPUT = "../00_assets/image/sd3_output.png"
 
     infer = SD3Inferencer()
     infer.load(SHIFT)

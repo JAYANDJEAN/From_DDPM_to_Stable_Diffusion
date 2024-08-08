@@ -195,7 +195,7 @@ class ClipL:
             "num_attention_heads": 12,
             "num_hidden_layers": 12
         }
-        with safe_open("..00_assets/model_sd3/clip_l.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("../00_assets/model_sd3/clip_l.safetensors", framework="pt", device="cpu") as f:
             self.model = SDClipModel(layer="hidden", layer_idx=-2, device="cpu", dtype=torch.float32,
                                      layer_norm_hidden_state=False, return_projected_pooled=False,
                                      textmodel_json_config=CLIPL_CONFIG)
@@ -211,14 +211,14 @@ class T5XXL:
             "num_layers": 24,
             "vocab_size": 32128
         }
-        with safe_open("..00_assets/model_sd3/t5xxl.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("../00_assets/model_sd3/t5xxl.safetensors", framework="pt", device="cpu") as f:
             self.model = T5XXLModel(T5_CONFIG, device="cpu", dtype=torch.float32)
             load_into(f, self.model.transformer, "", "cpu", torch.float32)
 
 
 class SD3:
     def __init__(self, shift):
-        with safe_open("..00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("../00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
             self.model = BaseModel(shift=shift, file=f, prefix="model.diffusion_model.", device="cpu",
                                    dtype=torch.float16).eval()
             load_into(f, self.model, "model.", "cpu", torch.float16)
@@ -226,7 +226,7 @@ class SD3:
 
 class VAE:
     def __init__(self):
-        with safe_open("..00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("../00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
             self.model = SDVAE(device="cpu", dtype=torch.float16).eval().cpu()
             prefix = ""
             if any(k.startswith("first_stage_model.") for k in f.keys()):
@@ -237,7 +237,6 @@ class VAE:
 #################################################################################################
 
 
-@torch.no_grad()
 class SD3Inferencer:
     def __init__(self):
         self.vae = None
