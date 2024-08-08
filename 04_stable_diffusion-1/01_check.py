@@ -7,6 +7,7 @@ from PIL import Image
 from modelsummary import summary
 import torch.nn as nn
 import safetensors
+from stable_diffusion_pytorch import pipeline
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 prompts = ["a photograph of an astronaut riding a horse"]
@@ -14,6 +15,11 @@ height = width = 512
 cfg_scale = 7.5
 n_inference_steps = 50
 tokenizer = tokenizer.Tokenizer()
+
+
+def demo():
+    images = pipeline.generate(prompts, do_cfg=False)
+    images[0].save('../00_assets/image/output.jpg')
 
 
 def check_pipeline():
