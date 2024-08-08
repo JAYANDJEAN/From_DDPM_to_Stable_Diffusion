@@ -204,12 +204,12 @@ class Upsample(nn.Module):
 
 
 class SwitchSequential(nn.Sequential):
-    def forward(self, x, **kwargs):
+    def forward(self, x, context, time):
         for layer in self:
             if isinstance(layer, AttentionBlock):
-                x = layer(x, kwargs.get('context', None))
+                x = layer(x, context)
             elif isinstance(layer, ResidualBlock):
-                x = layer(x, kwargs.get('time', None))
+                x = layer(x, time)
             else:
                 x = layer(x)
         return x
@@ -261,6 +261,8 @@ class UNet(nn.Module):
 
     def forward(self, x, context, time):
         skip_connections = []
+        context = self.label_embedding(context)
+        time = self.time_embedding(time)
         for i, layers in enumerate(self.encoders):
             x = layers(x, context, time)
             skip_connections.append(x)

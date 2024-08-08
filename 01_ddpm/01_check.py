@@ -1,5 +1,5 @@
 from utils import *
-from unet import UNet
+from unet_new import UNet
 from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
@@ -54,12 +54,8 @@ def check_conv():
 def check_unet_output():
     t = torch.randint(0, n_step, (batch_size,))
     y = torch.randint(0, n_class, (batch_size,))
-    x1 = torch.rand(batch_size, 3, 32, 32)
+    x1 = torch.rand(batch_size, 3, 64, 64)
     unet = UNet(channel_img=3,
-                channel_base=128,
-                channel_mults=[1, 2, 2, 2],
-                dropout=0.1,
-                n_steps=n_step,
                 num_class=n_class)
     x_recon = unet(x1, t, y)
     assert x_recon.shape == x1.shape
@@ -86,4 +82,4 @@ def check_animal_faces():
 
 
 if __name__ == '__main__':
-    check_animal_faces()
+    check_unet_output()
