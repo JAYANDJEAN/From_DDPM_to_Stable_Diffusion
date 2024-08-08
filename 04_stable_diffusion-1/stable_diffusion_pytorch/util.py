@@ -16,10 +16,11 @@ def get_alphas_cumprod(beta_start=0.00085, beta_end=0.0120, n_training_steps=100
     return alphas_cumprod
 
 
-def get_file_path(filename, url=None):
+def get_file_path(filename):
     module_location = os.path.dirname(os.path.abspath(__file__))
     parent_location = os.path.dirname(module_location)
-    file_location = os.path.join(parent_location, "data", filename)
+    parent_location = os.path.dirname(parent_location)
+    file_location = os.path.join(parent_location, "00_assets/model_sd1", filename)
     return file_location
 
 
@@ -41,3 +42,5 @@ def rescale(x, old_range, new_range, clamp=False):
     if clamp:
         x = x.clamp(new_min, new_max)
     return x
+
+

@@ -92,7 +92,7 @@ def check_diffusion():
 
 
 def check_tensor():
-    file_path = './data/ckpt/diffusion.pt'
+    file_path = '../00_assets/data/ckpt/diffusion.pt'
     model = torch.load(file_path)
 
     for name, param in model.items():

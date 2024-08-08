@@ -3,6 +3,28 @@ import torch.nn as nn
 from diffusers import StableDiffusion3Pipeline, FluxPipeline
 from diffusion import *
 from modelsummary import summary
+from sd3_infer import SD3Inferencer
+
+
+def demo():
+    # Note: Sigma shift value, publicly released models use 3.0
+    SHIFT = 3.0
+    WIDTH = 1024
+    HEIGHT = 1024
+    PROMPT = "a photo of a cat"
+    # Most models prefer the range of 4-5, but still work well around 7
+    CFG_SCALE = 5
+    STEPS = 50
+    SEED = 1
+    INIT_IMAGE = None
+    # If init_image is given, this is the percentage of denoising steps to run
+    # (1.0 = full denoise, 0.0 = no denoise at all)
+    DENOISE = 0.6
+    OUTPUT = "output.png"
+
+    infer = SD3Inferencer()
+    infer.load(SHIFT)
+    infer.gen_image(PROMPT, WIDTH, HEIGHT, STEPS, CFG_SCALE, SEED, OUTPUT, INIT_IMAGE, DENOISE)
 
 
 def check_diffusion():

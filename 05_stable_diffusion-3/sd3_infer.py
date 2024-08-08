@@ -6,7 +6,7 @@
 # Also can have
 # - `sd3_vae.safetensors` (holds the VAE separately if needed)
 
-import torch, fire, math
+import torch, math
 from safetensors import safe_open
 from utils import sample_euler, SDVAE, SDClipModel, SDXLClipG, T5XXLModel, SD3Tokenizer
 from PIL import Image
@@ -99,7 +99,7 @@ class BaseModel(torch.nn.Module):
                 "out_features": context_shape[0]
             }
         }
-        self.diffusion_model = MMDiT(input_size=None, pos_embed_scaling_factor=None, pos_embed_offset=None,
+        self.diffusion_model = MMDiT(pos_embed_scaling_factor=None, pos_embed_offset=None,
                                      pos_embed_max_size=pos_embed_max_size, patch_size=patch_size, in_channels=16,
                                      depth=depth, num_patches=num_patches, adm_in_channels=adm_in_channels,
                                      context_embedder_config=context_embedder_config, device=device, dtype=dtype)
@@ -181,7 +181,7 @@ class ClipG:
             "num_attention_heads": 20,
             "num_hidden_layers": 32
         }
-        with safe_open("models/clip_g.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("..00_assets/model_sd3/clip_g.safetensors", framework="pt", device="cpu") as f:
             self.model = SDXLClipG(CLIPG_CONFIG, device="cpu", dtype=torch.float32)
             load_into(f, self.model.transformer, "", "cpu", torch.float32)
 
@@ -195,7 +195,7 @@ class ClipL:
             "num_attention_heads": 12,
             "num_hidden_layers": 12
         }
-        with safe_open("models/clip_l.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("..00_assets/model_sd3/clip_l.safetensors", framework="pt", device="cpu") as f:
             self.model = SDClipModel(layer="hidden", layer_idx=-2, device="cpu", dtype=torch.float32,
                                      layer_norm_hidden_state=False, return_projected_pooled=False,
                                      textmodel_json_config=CLIPL_CONFIG)
@@ -211,22 +211,22 @@ class T5XXL:
             "num_layers": 24,
             "vocab_size": 32128
         }
-        with safe_open("models/t5xxl.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("..00_assets/model_sd3/t5xxl.safetensors", framework="pt", device="cpu") as f:
             self.model = T5XXLModel(T5_CONFIG, device="cpu", dtype=torch.float32)
             load_into(f, self.model.transformer, "", "cpu", torch.float32)
 
 
 class SD3:
-    def __init__(self, model, shift):
-        with safe_open(model, framework="pt", device="cpu") as f:
+    def __init__(self, shift):
+        with safe_open("..00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
             self.model = BaseModel(shift=shift, file=f, prefix="model.diffusion_model.", device="cpu",
                                    dtype=torch.float16).eval()
             load_into(f, self.model, "model.", "cpu", torch.float16)
 
 
 class VAE:
-    def __init__(self, model):
-        with safe_open(model, framework="pt", device="cpu") as f:
+    def __init__(self):
+        with safe_open("..00_assets/model_sd3/sd3_medium.safetensors", framework="pt", device="cpu") as f:
             self.model = SDVAE(device="cpu", dtype=torch.float16).eval().cpu()
             prefix = ""
             if any(k.startswith("first_stage_model.") for k in f.keys()):
@@ -237,32 +237,7 @@ class VAE:
 #################################################################################################
 
 
-# Note: Sigma shift value, publicly released models use 3.0
-SHIFT = 3.0
-# Naturally, adjust to the width/height of the model you have
-WIDTH = 1024
-HEIGHT = 1024
-# Pick your prompt
-PROMPT = "a photo of a cat"
-# Most models prefer the range of 4-5, but still work well around 7
-CFG_SCALE = 5
-# Different models want different step counts but most will be good at 50, albeit that's slow to run
-# sd3_medium is quite decent at 28 steps
-STEPS = 50
-# Random seed
-SEED = 1
-# Actual model file path
-MODEL = "models/sd3_medium.safetensors"
-# VAE model file path, or set None to use the same model file
-VAEFile = None  # "models/sd3_vae.safetensors"
-# Optional init image file path
-INIT_IMAGE = None
-# If init_image is given, this is the percentage of denoising steps to run (1.0 = full denoise, 0.0 = no denoise at all)
-DENOISE = 0.6
-# Output file path
-OUTPUT = "output.png"
-
-
+@torch.no_grad()
 class SD3Inferencer:
     def __init__(self):
         self.vae = None
@@ -272,15 +247,15 @@ class SD3Inferencer:
         self.t5xxl = None
         self.sd3 = None
 
-    def load(self, model=MODEL, vae=VAEFile, shift=SHIFT):
+    def load(self, shift):
         print("\n" + '-' * 90)
         print("Loading tokenizers and models...")
         self.tokenizer = SD3Tokenizer()
         self.clip_g = ClipG()
         self.clip_l = ClipL()
         self.t5xxl = T5XXL()
-        self.sd3 = SD3(model, shift)
-        self.vae = VAE(vae or model)
+        self.sd3 = SD3(shift)
+        self.vae = VAE()
         print("Models loaded.")
 
     def get_empty_latent(self, width, height):
@@ -406,8 +381,8 @@ class SD3Inferencer:
         print("Decoded")
         return out_image
 
-    def gen_image(self, prompt=PROMPT, width=WIDTH, height=HEIGHT, steps=STEPS, cfg_scale=CFG_SCALE, seed=SEED,
-                  output=OUTPUT, init_image=INIT_IMAGE, denoise=DENOISE):
+    def gen_image(self, prompt, width, height, steps, cfg_scale, seed,
+                  output, init_image, denoise):
         latent = self.get_empty_latent(width, height)
         print("\n" + '-' * 90)
         print("Start Generating...")
@@ -427,14 +402,3 @@ class SD3Inferencer:
         image.save(output)
         print("\n" + '-' * 90)
         print("Done!!!!!!!!!!!")
-
-
-@torch.no_grad()
-def main(prompt=PROMPT, width=WIDTH, height=HEIGHT, steps=STEPS, cfg_scale=CFG_SCALE, shift=SHIFT, model=MODEL,
-         vae=VAEFile, seed=SEED, output=OUTPUT, init_image=INIT_IMAGE, denoise=DENOISE):
-    infer = SD3Inferencer()
-    infer.load(model, vae, shift)
-    infer.gen_image(prompt, width, height, steps, cfg_scale, seed, output, init_image, denoise)
-
-
-fire.Fire(main)
