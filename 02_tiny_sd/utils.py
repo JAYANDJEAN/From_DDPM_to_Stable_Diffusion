@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 def denormalize(tensor, mean, std, device):
@@ -21,36 +22,58 @@ def extract(v, t, x_shape):
     return out.view([t.shape[0]] + [1] * (len(x_shape) - 1))
 
 
-# UserWarning: To get the last learning rate computed by the scheduler, please use get_last_lr().
-class GradualWarmupScheduler(LRScheduler):
-    def __init__(self, optimizer, multiplier, warm_epoch, after_scheduler=None):
-        self.multiplier = multiplier
-        self.total_epoch = warm_epoch
-        self.after_scheduler = after_scheduler
-        self.finished = False
-        self.last_epoch = None
-        self.base_lrs = None
-        super().__init__(optimizer)
+class EMA:
+    def __init__(self, model, decay):
+        self.model = model
+        self.decay = decay
+        self.shadow = {}
+        self.backup = {}
+
+        # 初始化 shadow 权重
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+
+    def update(self):
+        """使用当前模型的参数更新 shadow 权重"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                new_average = (1.0 - self.decay) * param.data + self.decay * self.shadow[name]
+                self.shadow[name] = new_average.clone()
+
+    def apply_shadow(self):
+        """保存当前模型参数，并将模型参数更新为 shadow 权重"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                self.backup[name] = param.data.clone()
+                param.data = self.shadow[name]
+
+    def restore(self):
+        """恢复模型参数为原始参数"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                param.data = self.backup[name]
+
+
+class CosineWarmupScheduler(LRScheduler):
+    def __init__(self, optimizer, warmup_epochs, max_lr, total_epochs, last_epoch=-1):
+        self.warmup_epochs = warmup_epochs
+        self.max_lr = max_lr
+        self.cosine_scheduler = CosineAnnealingLR(optimizer, T_max=(total_epochs - warmup_epochs))
+        super().__init__(optimizer, last_epoch)
 
     def get_lr(self):
-        if self.last_epoch > self.total_epoch:
-            if self.after_scheduler:
-                if not self.finished:
-                    self.after_scheduler.base_lrs = [base_lr * self.multiplier for base_lr in self.base_lrs]
-                    self.finished = True
-                return self.after_scheduler.get_lr()
-            return [base_lr * self.multiplier for base_lr in self.base_lrs]
-        return [base_lr * ((self.multiplier - 1.) * self.last_epoch / self.total_epoch + 1.) for base_lr in
-                self.base_lrs]
+        if self.last_epoch < self.warmup_epochs:
+            return [base_lr + (self.max_lr - base_lr) * self.last_epoch / self.warmup_epochs
+                    for base_lr in self.base_lrs]
+        else:
+            return self.cosine_scheduler.get_lr()
 
     def step(self, epoch=None, metrics=None):
-        if self.finished and self.after_scheduler:
-            if epoch is None:
-                self.after_scheduler.step(None)
-            else:
-                self.after_scheduler.step(epoch - self.total_epoch)
+        if self.last_epoch >= self.warmup_epochs:
+            self.cosine_scheduler.step(epoch)
         else:
-            return super(GradualWarmupScheduler, self).step(epoch)
+            return super().step(epoch)
 
 
 class TrainerDDPM(nn.Module):

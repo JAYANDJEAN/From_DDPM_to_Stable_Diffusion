@@ -1,5 +1,5 @@
 from utils import *
-from unet_new import UNet
+from diffusion import Diffusion
 from torch import nn
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,15 +51,14 @@ def check_conv():
     print(trans(conv2(x)).shape)
 
 
-def check_unet_output():
+def check_diffusion_output():
     t = torch.randint(0, n_step, (batch_size,))
     y = torch.randint(0, n_class, (batch_size,))
     x1 = torch.rand(batch_size, 3, 64, 64)
-    unet = UNet(channel_img=3,
-                num_class=n_class)
-    x_recon = unet(x1, t, y)
+    diffusion = Diffusion(channel_img=3, channel_multy=[1, 2, 4, 8], num_class=n_class)
+    x_recon = diffusion(x1, t, y)
     assert x_recon.shape == x1.shape
-    print(f"\nnumber of parameters: {sum([p.numel() for p in unet.parameters()])}")
+    print(f"\nnumber of parameters: {sum([p.numel() for p in diffusion.parameters()])}")
 
 
 def check_animal_faces():
@@ -82,4 +81,4 @@ def check_animal_faces():
 
 
 if __name__ == '__main__':
-    check_unet_output()
+    check_diffusion_output()
