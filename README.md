@@ -1,19 +1,20 @@
 # From-DDPM-to-Stable-Diffusion
 
-## DDPM
+## VAE
 
-1. cifar10并没有训练成功吧，训练代码，需要EMA。
-2. 代码可参考：
+
+## Tiny SD
+
+1. 尝试自己训练一个小型的Stable Diffusion，硬件只有一张16GB的RTX-4080。
+2. 数据集使用animal-faces，详见：https://www.kaggle.com/datasets/andrewmvd/animal-faces
+   1. ![faces](00_assets/image/animal_faces.jpg)
+3. 方法1: 将所有512\*512的图片转成64\*64，然后直接在图片空间直接训练，重新生成图片如下
+   1. ![](00_assets/image/animal_face_generated_method1.png)
+4. DDPM 代码可参考：
    1. https://github.com/hkproj/pytorch-ddpm/tree/main
-   2. https://github.com/Michedev/DDPMs-Pytorch/tree/master
-   3. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
-   4. https://github.com/abarankab/DDPM/tree/main
-   5. https://www.kaggle.com/datasets/joaopauloschuler/cifar10-64x64-resized-via-cai-super-resolution
-   6. Denoising Diffusion Probabilistic Models 
-   7. Improved Denoising Diffusion Probabilistic Models
-   8. Classifier-Free Diffusion Guidance
-   9. https://www.kaggle.com/datasets/humairmunir/gender-recognizer
-   10. https://www.kaggle.com/datasets/alessiocorrado99/animals10
+   2. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
+   3. https://github.com/abarankab/DDPM/tree/main
+
 
 ## Stable Diffusion 1
 
