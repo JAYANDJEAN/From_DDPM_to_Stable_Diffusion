@@ -80,5 +80,20 @@ def check_animal_faces():
         break
 
 
+def check_warmup():
+    diffusion = Diffusion(channel_img=3, channel_multy=[1, 2, 4, 8], num_class=n_class)
+    optimizer = torch.optim.AdamW(diffusion.parameters(), lr=1e-5, weight_decay=1e-4)
+    scheduler = CosineWarmupScheduler(optimizer=optimizer,
+                                      warmup_epochs=7,
+                                      max_lr=1e-4,
+                                      total_epochs=70)
+
+    for epoch in range(70):
+        optimizer.step()
+        current_lr = scheduler.optimizer.param_groups[0]['lr']
+        print(f"epoch: {epoch}, current_lr: {current_lr:.6f}")
+        scheduler.step()
+
+
 if __name__ == '__main__':
-    check_diffusion_output()
+    check_warmup()

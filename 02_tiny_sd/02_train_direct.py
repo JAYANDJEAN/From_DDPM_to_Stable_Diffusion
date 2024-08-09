@@ -72,7 +72,7 @@ def train(config: Dict):
         end_time = timer()
         current_lr = scheduler.optimizer.param_groups[0]['lr']
         print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
-              f"Epoch time = {(end_time - start_time):.3f}s, "
+              f"time: {(end_time - start_time):.3f}s, "
               f"current_lr: {current_lr:.4f}, config_lr: {config['lr']:.4f}")
 
         scheduler.step()
@@ -80,8 +80,8 @@ def train(config: Dict):
 
         if epoch >= config['epoch_save']:
             ema.apply_shadow()
-        torch.save(net_model.state_dict(), os.path.join(config['model_dir'], f'ckpt_{base + epoch}.pth'))
-        ema.restore()
+            torch.save(net_model.state_dict(), os.path.join(config['model_dir'], f'ckpt_{base + epoch}.pth'))
+            ema.restore()
 
 
 def generate(config: Dict):
@@ -122,8 +122,8 @@ if __name__ == '__main__':
         'channel': 128,
         'channel_multy': [1, 2, 2, 2],
         'dropout': 0.15,
-        'lr': 1e-4,
-        'max_lr': 0.01,
+        'lr': 1e-5,
+        'max_lr': 1e-4,
         'beta_1': 1e-4,
         'beta_T': 0.028,
         'img_channel': 3,
