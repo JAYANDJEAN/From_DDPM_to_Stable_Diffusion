@@ -1,5 +1,5 @@
 import math
-from typing import  List
+from typing import List
 import torch
 import torch.nn as nn
 from torch import Tensor
