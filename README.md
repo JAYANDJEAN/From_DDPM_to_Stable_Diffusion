@@ -4,7 +4,7 @@
 
 1. https://github.com/AntixK/PyTorch-VAE
 
-## Tiny SD
+## Tiny Stable Diffusion
 
 1. 尝试自己训练一个小型的Stable Diffusion，硬件只有一张16GB的RTX-4080。
 2. 数据集使用animal-faces，详见：https://www.kaggle.com/datasets/andrewmvd/animal-faces

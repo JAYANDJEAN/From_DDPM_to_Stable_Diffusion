@@ -80,4 +80,4 @@ def check_sdvae():
 
 
 if __name__ == '__main__':
-    check_hf_vae()
+    check_vanilla_vae()

@@ -16,7 +16,7 @@ class BaseVAE(nn.Module):
     def decode(self, input: Tensor) -> Any:
         raise NotImplementedError
 
-    def sample(self, batch_size: int, current_device: int, **kwargs) -> Tensor:
+    def sample(self, batch_size: int, current_device: str) -> Tensor:
         raise NotImplementedError
 
     def generate(self, x: Tensor, **kwargs) -> Tensor:
@@ -127,9 +127,9 @@ class VanillaVAE(BaseVAE):
         loss = recons_loss + kld_weight * kld_loss
         return {'loss': loss, 'Reconstruction_Loss': recons_loss.detach(), 'KLD': -kld_loss.detach()}
 
-    def sample(self, num_samples: int, current_device: int, **kwargs) -> Tensor:
+    def sample(self, num_samples: int, device: str) -> Tensor:
         z = torch.randn(num_samples, self.latent_dim)
-        z = z.to(current_device)
+        z = z.to(device)
         samples = self.decode(z)
         return samples
 
