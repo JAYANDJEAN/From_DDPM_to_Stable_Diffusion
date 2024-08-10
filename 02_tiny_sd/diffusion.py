@@ -5,6 +5,10 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import functional as F
 
+"""
+基于SD1简化而来的模型
+"""
+
 
 class TimestepEmbedder(nn.Module):
     def __init__(self, hidden_size: int, dim: int = 256):

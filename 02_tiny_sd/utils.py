@@ -5,10 +5,11 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
-def denormalize(tensor, mean, std, device):
+def denormalize(tensor, mean, std):
+    device = tensor.device
     mean = torch.tensor(mean).view(1, 3, 1, 1).to(device)
     std = torch.tensor(std).view(1, 3, 1, 1).to(device)
-    tensor = tensor.to(device)
+    tensor = tensor
     return tensor * std + mean
 
 

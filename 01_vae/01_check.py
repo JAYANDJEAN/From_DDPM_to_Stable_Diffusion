@@ -1,9 +1,49 @@
 import torch
 from models import VanillaVAE, SDVAE, AttentionBlock, ResidualBlock
-import torch.nn as nn
+
+from diffusers.models import AutoencoderKL
+
+from torch import nn
+
+import torch
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from torchvision.utils import save_image
 
 
-def check_vae():
+def denormalize(tensor, mean, std):
+    device = tensor.device
+    mean = torch.tensor(mean).view(1, 3, 1, 1).to(device)
+    std = torch.tensor(std).view(1, 3, 1, 1).to(device)
+    tensor = tensor
+    return tensor * std + mean
+
+
+def check_hf_vae():
+    vae = AutoencoderKL.from_pretrained("stabilityai/sdxl-vae")
+    means = [0.485, 0.456, 0.406]
+    stds = [0.229, 0.224, 0.225]
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=means, std=stds)
+    ])
+    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    _, batch = next(enumerate(dataloader))
+    save_image(tensor=denormalize(batch[0].clone(), means, stds),
+               fp=f"../00_assets/image/animal_faces_raw.png",
+               nrow=4)
+    with torch.no_grad():
+        latents = vae.encode(batch[0]).latent_dist.sample()
+        print(latents.shape)
+        decoded_image = vae.decode(latents).sample
+        print(decoded_image.shape)
+        save_image(tensor=denormalize(decoded_image.clone(), means, stds),
+                   fp=f"../00_assets/image/animal_faces_latent.png",
+                   nrow=4)
+
+
+def check_vanilla_vae():
     x = torch.randn((128, 3, 128, 128))
     vae = VanillaVAE(in_channels=3, image_size=128, latent_dim=256)
     mu, log_var = vae.encode(x)
@@ -27,35 +67,5 @@ def check_sdvae():
     print(f"recon shape: {recon.shape}")
 
 
-def check_conv():
-    x = torch.randn((4, 3, 512, 512))
-    conv = nn.Conv2d(3, 3, kernel_size=3, stride=2, padding=0)
-    print(conv(x).shape)
-
-    encoder = nn.Sequential(
-        nn.Conv2d(3, 128, kernel_size=3, padding=1),
-        ResidualBlock(128, 128),
-        ResidualBlock(128, 128),
-        nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=0),
-        ResidualBlock(128, 256),
-        ResidualBlock(256, 256),
-        nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=0),
-        ResidualBlock(256, 512),
-        ResidualBlock(512, 512),
-        nn.Conv2d(512, 512, kernel_size=3, stride=2, padding=0),
-        ResidualBlock(512, 512),
-        ResidualBlock(512, 512),
-        ResidualBlock(512, 512),
-        AttentionBlock(512),
-        ResidualBlock(512, 512),
-        nn.GroupNorm(32, 512),
-        nn.SiLU(),
-        nn.Conv2d(512, 8, kernel_size=3, padding=1),
-        nn.Conv2d(8, 8, kernel_size=1, padding=0),
-    )
-
-    print(encoder(x).shape)
-
-
 if __name__ == '__main__':
-    check_sdvae()
+    check_hf_vae()

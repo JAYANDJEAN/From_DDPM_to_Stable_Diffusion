@@ -14,7 +14,7 @@
 4. 方法2：用animal-faces数据集先训练一个VAE，用VAE将图片转换到隐藏空间再训练，目前没看懂这部分代码，搁置。
    1. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
 5. 方法3：直接用SD1的VAE将图片转换到隐藏空间。
-4. DDPM 代码可参考：
+6. DDPM 代码可参考：
    1. https://github.com/hkproj/pytorch-ddpm/tree/main
    2. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
    3. https://github.com/abarankab/DDPM/tree/main

@@ -15,21 +15,18 @@ n_class = 10
 
 
 def visual_alpha():
-    def compute_ddpm_params(T, beta_start, beta_end):
-        betas = np.linspace(beta_start, beta_end, T)
-        alphas = 1 - betas
-        alphas_bar = np.cumprod(alphas)
-        sqrt_alphas_bar = np.sqrt(alphas_bar)
-        sqrt_one_minus_alphas_bar = np.sqrt(1 - alphas_bar)
-        return sqrt_alphas_bar, sqrt_one_minus_alphas_bar
-
     T = 1000
     beta_start = 0.0001
     beta_end = 0.02
-    alpha, beta = compute_ddpm_params(T, beta_start, beta_end)
+    betas = np.linspace(beta_start, beta_end, T)
+    alphas = 1 - betas
+    alphas_bar = np.cumprod(alphas)
+    sqrt_alphas_bar = np.sqrt(alphas_bar)
+    sqrt_one_minus_alphas_bar = np.sqrt(1 - alphas_bar)
+
     plt.figure(figsize=(12, 8))
-    plt.plot(alpha, label='sqrt_alphas_bar')
-    plt.plot(beta, label='sqrt_one_minus_alphas_bar', color='orange')
+    plt.plot(sqrt_alphas_bar, label='sqrt_alphas_bar')
+    plt.plot(sqrt_one_minus_alphas_bar, label='sqrt_one_minus_alphas_bar', color='orange')
     plt.title('DDPM Parameters')
     plt.legend()
     plt.xlabel('Timesteps')

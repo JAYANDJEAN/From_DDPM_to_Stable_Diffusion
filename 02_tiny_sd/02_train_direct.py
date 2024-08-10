@@ -25,7 +25,7 @@ def train(config: Dict):
     dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
     dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True, num_workers=4)
     _, batch = next(enumerate(dataloader))
-    img_batch = torch.clip(denormalize(batch[0].clone(), means, stds, device), 0, 1)
+    img_batch = torch.clip(denormalize(batch[0].clone(), means, stds), 0, 1)
     save_image(img_batch, '../00_assets/image/animal_faces.png', nrow=config['nrow'])
 
     net_model = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
@@ -49,7 +49,7 @@ def train(config: Dict):
                                       max_lr=config['max_lr'],
                                       total_epochs=config['epoch'])
     trainer = TrainerDDPM(net_model, config['beta_1'], config['beta_T'], config['T']).to(device)
-    ema = EMA(net_model, decay=0.999)
+    # ema = EMA(net_model, decay=0.999)
 
     for epoch in range(config['epoch']):
         start_time = timer()
@@ -76,12 +76,9 @@ def train(config: Dict):
               f"current_lr: {current_lr:.4f}, config_lr: {config['lr']:.4f}")
 
         scheduler.step()
-        ema.update()
 
         if epoch >= config['epoch_save']:
-            ema.apply_shadow()
             torch.save(net_model.state_dict(), os.path.join(config['model_dir'], f'ckpt_{base + epoch}.pth'))
-            ema.restore()
 
 
 def generate(config: Dict):
@@ -106,7 +103,7 @@ def generate(config: Dict):
             img_noisy = torch.randn(size=[config['num_class'] * config['nrow'], config['img_channel'],
                                           config['img_size'], config['img_size']], device=device)
             img_sample = sampler(img_noisy, labels)
-            save_image(tensor=denormalize(img_sample, means, stds, device),
+            save_image(tensor=denormalize(img_sample, means, stds),
                        fp=f'../00_assets/image/animal_face_generated_{i}.png',
                        nrow=config['nrow'])
             print(f'animal_face_generated_{i}.png is done!')
