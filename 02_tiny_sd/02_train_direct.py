@@ -14,10 +14,6 @@ def train(config: Dict):
     print(f'use device: {device}')
 
     dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
-    _, batch = next(enumerate(dataloader))
-    img_batch = torch.clip(denormalize(batch[0].clone()), 0, 1)
-    save_image(img_batch, '../00_assets/image/animal_faces.png', nrow=config['nrow'])
-
     net_model = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
                           channel_multy=config['channel_multy'], dropout=config['dropout']).to(device)
     print('Total trainable parameters:', sum(p.numel() for p in net_model.parameters() if p.requires_grad))
