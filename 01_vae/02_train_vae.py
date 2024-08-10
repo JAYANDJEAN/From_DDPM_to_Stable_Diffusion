@@ -9,6 +9,7 @@ from torchvision.utils import save_image
 from torchvision import datasets, transforms
 
 from models import VanillaVAE
+from data import animal_faces_loader, denormalize
 
 
 def train(config: Dict):
@@ -16,14 +17,7 @@ def train(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'use device: {device}')
 
-    transform = transforms.Compose([
-        transforms.Resize((config['img_size'], config['img_size'])),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=means, std=stds)
-    ])
-    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True, num_workers=4)
-
+    dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
     vae = VanillaVAE(in_channels=config['img_channel'], image_size=config['img_size'],
                      latent_dim=config['latent_dim']).to(device)
     print('Total trainable parameters:', sum(p.numel() for p in vae.parameters() if p.requires_grad))
@@ -69,9 +63,6 @@ def generate(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # load model and evaluate
     with torch.no_grad():
-        values = torch.arange(1, config['num_class'] + 1)
-        labels = values.repeat_interleave(config['nrow']).to(device)
-
         vae = VanillaVAE(in_channels=config['img_channel'], image_size=config['img_size'],
                          latent_dim=config['latent_dim']).to(device)
         base = config['epoch_awoken'] if config['epoch_awoken'] is not None else 0
@@ -83,7 +74,7 @@ def generate(config: Dict):
 
             images = vae.sample(config['nrow'] * 5, device)
 
-            save_image(tensor=images,
+            save_image(tensor=denormalize(images),
                        fp=f'../00_assets/image/vae_generated_{i}.png',
                        nrow=config['nrow'])
             print(f'animal_face_generated_{i}.png is done!')
@@ -96,25 +87,12 @@ if __name__ == '__main__':
         'epoch_awoken': None,
         'batch_size': 32,
         'latent_dim': 512,
-        'channel': 128,
-        'channel_multy': [1, 2, 2, 2],
-        'dropout': 0.15,
-        'lr': 1e-5,
-        'max_lr': 1e-4,
-        'beta_1': 1e-4,
-        'beta_T': 0.028,
+        'lr': 1e-4,
         'img_channel': 3,
         'img_size': 64,
-        'grad_clip': 1.,
-        'train_rand': 0.01,
-        'w': 1.8,  # ????
         'nrow': 8,
-        'num_class': 3,
         'model_dir': '../00_assets/model_vae/'
     }
-
-    means = [0.485, 0.456, 0.406]
-    stds = [0.229, 0.224, 0.225]
 
     os.makedirs(modelConfig['model_dir'], exist_ok=True)
 

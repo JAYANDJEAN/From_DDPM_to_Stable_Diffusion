@@ -2,7 +2,7 @@
 
 ## Data
 
-1. 数据集使用animal-faces，详见：https://www.kaggle.com/datasets/andrewmvd/animal-faces
+1. 以下实验数据均使用animal-faces，详见：https://www.kaggle.com/datasets/andrewmvd/animal-faces
     1. ![faces](00_assets/image/animal_faces.jpg)
 
 ## VAE
