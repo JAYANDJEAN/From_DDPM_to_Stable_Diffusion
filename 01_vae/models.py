@@ -196,43 +196,81 @@ class ResidualBlock(nn.Module):
         return out
 
 
+# todo
 class SDVAE(BaseVAE):
     def __init__(self, in_channels: int, image_size: int, latent_dim: int, hidden_dims: List = None):
         super().__init__()
+        assert image_size % 8 == 0
+        self.scale = image_size // 8
+        self.latent_dim = latent_dim
+
         if hidden_dims is None:
-            self.hidden_dims = [32, 64, 128, 256, 512]
+            hidden_dims = [32, 64, 128, 256]
+
+        assert len(hidden_dims) == 4
 
         modules = []
-        for h_dim in self.hidden_dims:
+        for i in range(len(hidden_dims)):
+            ch_in = in_channels if i == 0 else hidden_dims[i - 1]
+            stride = 1 if i == 0 else 2
+            ch_out = hidden_dims[i]
             modules.append(
                 nn.Sequential(
-                    nn.Conv2d(in_channels, out_channels=h_dim,
-                              kernel_size=3, stride=2, padding=1),
-                    ResidualBlock(h_dim, h_dim),
+                    nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=stride, padding=1),
+                    ResidualBlock(ch_out, ch_out)
                 )
             )
-            in_channels = h_dim
-
+        modules.append(
+            nn.Sequential(
+                AttentionBlock(hidden_dims[-1]),
+                ResidualBlock(hidden_dims[-1], hidden_dims[-1]),
+                nn.GroupNorm(32, hidden_dims[-1]),
+                nn.SiLU(),
+                nn.Conv2d(hidden_dims[-1], 8, kernel_size=3, stride=1, padding=1),
+            )
+        )
         self.encoder = nn.Sequential(*modules)
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 128, kernel_size=3, padding=1),
-            ResidualBlock(128, 128),
-            ResidualBlock(128, 128),
-            nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=0),
-            ResidualBlock(128, 256),
-            ResidualBlock(256, 256),
-            nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=0),
-            ResidualBlock(256, 512),
-            ResidualBlock(512, 512),
-            nn.Conv2d(512, 512, kernel_size=3, stride=2, padding=0),
-            ResidualBlock(512, 512),
-            ResidualBlock(512, 512),
-            ResidualBlock(512, 512),
-            AttentionBlock(512),
-            ResidualBlock(512, 512),
-            nn.GroupNorm(32, 512),
-            nn.SiLU(),
-            nn.Conv2d(512, 8, kernel_size=3, padding=1),
-            nn.Conv2d(8, 8, kernel_size=1, padding=0),
+        hidden_dims.reverse()
+
+        modules = [
+            nn.Sequential(
+                nn.Conv2d(4, hidden_dims[0], kernel_size=3, stride=1, padding=1),
+                ResidualBlock(hidden_dims[0], hidden_dims[0]),
+                AttentionBlock(hidden_dims[0]),
+            )
+        ]
+
+        for i in range(len(hidden_dims) - 1):
+            modules.append(
+                nn.Sequential(
+                    nn.Upsample(scale_factor=2),
+                    nn.Conv2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=3, stride=1, padding=1),
+                    ResidualBlock(hidden_dims[i + 1], hidden_dims[i + 1]),
+                )
+            )
+        modules.append(
+            nn.Sequential(
+                nn.GroupNorm(8, hidden_dims[-1]),
+                nn.SiLU(),
+                nn.Conv2d(hidden_dims[-1], in_channels, kernel_size=3, stride=1, padding=1),
+            )
         )
+
+        self.decoder = nn.Sequential(*modules)
+
+    def encode(self, x: Tensor) -> Tensor:
+        # x: (bs, 3, 512, 512) -> (bs, 4, 64, 64)
+        x = self.encoder(x)
+        mean, log_variance = torch.chunk(x, 2, dim=1)
+
+        log_variance = torch.clamp(log_variance, -30, 20)
+        std = log_variance.exp().sqrt()
+
+        noise = torch.randn_like(std)
+        x = mean + std * noise
+        return x
+
+    def decode(self, z: Tensor) -> Tensor:
+        # x: (bs, 4, 64, 64) -> (bs, 3, 512, 512)
+        return self.decoder(z)
