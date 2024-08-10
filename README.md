@@ -44,3 +44,4 @@
 
 1. https://www.youtube.com/watch?v=vAmKB7iPkWw
 2. https://github.com/hkproj/pytorch-paligemma
+3. https://huggingface.co/openbmb
