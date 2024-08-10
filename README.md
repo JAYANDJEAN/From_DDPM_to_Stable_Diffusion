@@ -13,7 +13,7 @@
    1. ![](00_assets/image/animal_face_generated_method1.png)
 4. 方法2：用animal-faces数据集先训练一个VAE，用VAE将图片转换到隐藏空间再训练，目前没看懂这部分代码，搁置。
    1. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
-5. 方法3：直接用sdxl-vae将图片转换到隐藏空间，再训练。
+5. 方法3：直接用sdxl-vae将图片转换到隐藏空间，再训练。sdxl-vae的效果还不错，如下所示。训练代码基本与方法1相同，不再重跑。
    1. ![](00_assets/image/animal_faces_raw.png)
    2. ![](00_assets/image/animal_faces_sdxl_vae_latent.png)
 6. DDPM 代码可参考：
