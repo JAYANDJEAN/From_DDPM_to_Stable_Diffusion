@@ -20,7 +20,11 @@ def denormalize(tensor, mean, std):
 
 
 def check_hf_vae():
-    vae = AutoencoderKL.from_pretrained("stabilityai/sdxl-vae")
+    """
+    对比了一下，stabilityai/sdxl-vae貌似更好
+    """
+    sdxl_vae = AutoencoderKL.from_pretrained("stabilityai/sdxl-vae")
+    sdxl_vae_fix = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix")
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
     transform = transforms.Compose([
@@ -28,18 +32,26 @@ def check_hf_vae():
         transforms.Normalize(mean=means, std=stds)
     ])
     dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
     _, batch = next(enumerate(dataloader))
     save_image(tensor=denormalize(batch[0].clone(), means, stds),
                fp=f"../00_assets/image/animal_faces_raw.png",
                nrow=4)
     with torch.no_grad():
-        latents = vae.encode(batch[0]).latent_dist.sample()
+        latents = sdxl_vae.encode(batch[0]).latent_dist.sample()
         print(latents.shape)
-        decoded_image = vae.decode(latents).sample
+        decoded_image = sdxl_vae.decode(latents).sample
         print(decoded_image.shape)
         save_image(tensor=denormalize(decoded_image.clone(), means, stds),
-                   fp=f"../00_assets/image/animal_faces_latent.png",
+                   fp=f"../00_assets/image/animal_faces_sdxl_vae_latent.png",
+                   nrow=4)
+
+        latents = sdxl_vae_fix.encode(batch[0]).latent_dist.sample()
+        print(latents.shape)
+        decoded_image = sdxl_vae_fix.decode(latents).sample
+        print(decoded_image.shape)
+        save_image(tensor=denormalize(decoded_image.clone(), means, stds),
+                   fp=f"../00_assets/image/animal_faces_sdxl_vae_fix_latent.png",
                    nrow=4)
 
 

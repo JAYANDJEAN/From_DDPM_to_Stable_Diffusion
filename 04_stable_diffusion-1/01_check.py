@@ -108,15 +108,5 @@ def check_tensor():
         print(f"Data (first 5 elements): {param.flatten()[:5]}\n")
 
 
-def check_parts():
-    model = SwitchSequential(ResidualBlock(320, 320), AttentionBlock(8, 40))
-    latent = torch.randn((1, 320, 64, 64), dtype=torch.float32)
-    context = torch.randn((2, 77, 768), dtype=torch.float32)
-    time = TimeEmbedding(320)(torch.randn((1, 320), dtype=torch.float32))
-    output = model(latent, context, time)
-    print(output.shape)
-    summary(model, latent, context, time, show_input=True)
-
-
 if __name__ == '__main__':
     demo()
