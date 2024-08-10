@@ -7,7 +7,7 @@
 
 ## VAE
 
-1. https://github.com/AntixK/PyTorch-VAE
+1. 参考：https://github.com/AntixK/PyTorch-VAE
 
 ## Tiny Stable Diffusion
 

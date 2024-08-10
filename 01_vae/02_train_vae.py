@@ -36,6 +36,8 @@ def train(config: Dict):
         losses = 0
 
         for images, labels in dataloader:
+            # indices = labels == 1
+            # images = images[indices]
             optimizer.zero_grad()
             images = images.to(device)
             result = vae(images)
@@ -85,7 +87,7 @@ if __name__ == '__main__':
         'latent_dim': 512,
         'lr': 1e-4,
         'img_channel': 3,
-        'img_size': 64,
+        'img_size': 512,
         'nrow': 8,
         'model_dir': '../00_assets/model_vae/'
     }
