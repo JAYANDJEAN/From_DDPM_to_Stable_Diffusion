@@ -1,14 +1,10 @@
 import os
 from typing import Dict
 import numpy as np
-
 import torch
 from timeit import default_timer as timer
-from torch.utils.data import DataLoader
 from torchvision.utils import save_image
-from torchvision import datasets, transforms
-
-from utils import SamplerDDPM, TrainerDDPM, CosineWarmupScheduler, denormalize, EMA
+from utils import SamplerDDPM, TrainerDDPM, CosineWarmupScheduler, denormalize, animal_faces_loader
 from diffusion import Diffusion
 
 
@@ -17,15 +13,9 @@ def train(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'use device: {device}')
 
-    transform = transforms.Compose([
-        transforms.Resize((config['img_size'], config['img_size'])),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=means, std=stds)
-    ])
-    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=config['batch_size'], shuffle=True, num_workers=4)
+    dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
     _, batch = next(enumerate(dataloader))
-    img_batch = torch.clip(denormalize(batch[0].clone(), means, stds), 0, 1)
+    img_batch = torch.clip(denormalize(batch[0].clone()), 0, 1)
     save_image(img_batch, '../00_assets/image/animal_faces.png', nrow=config['nrow'])
 
     net_model = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
@@ -103,7 +93,7 @@ def generate(config: Dict):
             img_noisy = torch.randn(size=[config['num_class'] * config['nrow'], config['img_channel'],
                                           config['img_size'], config['img_size']], device=device)
             img_sample = sampler(img_noisy, labels)
-            save_image(tensor=denormalize(img_sample, means, stds),
+            save_image(tensor=denormalize(img_sample),
                        fp=f'../00_assets/image/animal_face_generated_{i}.png',
                        nrow=config['nrow'])
             print(f'animal_face_generated_{i}.png is done!')
@@ -132,9 +122,6 @@ if __name__ == '__main__':
         'num_class': 3,
         'model_dir': '../00_assets/model_animal3/'
     }
-
-    means = [0.485, 0.456, 0.406]
-    stds = [0.229, 0.224, 0.225]
 
     os.makedirs(modelConfig['model_dir'], exist_ok=True)
 

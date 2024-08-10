@@ -1,15 +1,11 @@
 import os
 from typing import Dict
 import numpy as np
-
 import torch
 from timeit import default_timer as timer
-from torch.utils.data import DataLoader
 from torchvision.utils import save_image
-from torchvision import datasets, transforms
-
 from models import VanillaVAE
-from data import animal_faces_loader, denormalize
+from utils import animal_faces_loader, denormalize
 
 
 def train(config: Dict):

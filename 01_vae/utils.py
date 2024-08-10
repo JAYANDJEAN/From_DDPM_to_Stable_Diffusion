@@ -1,7 +1,5 @@
 import torch
-from timeit import default_timer as timer
 from torch.utils.data import DataLoader
-from torchvision.utils import save_image
 from torchvision import datasets, transforms
 from typing import Optional
 
@@ -19,10 +17,10 @@ def denormalize(tensor):
 
 def animal_faces_loader(batch_size: int, img_size: Optional[int]):
     transform = transforms.Compose([
-        transforms.Resize(img_size, img_size),
+        transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
         transforms.Normalize(mean=means, std=stds)
     ])
-    dataset = datasets.ImageFolder(root='./00_assets/datasets/afhq/train', transform=transform)
+    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
     return dataloader
