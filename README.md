@@ -30,7 +30,7 @@
 
 ## DDPM
 
-1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely transformed into random noise. This process does not involve parameter learning; instead, the original image is input, and the image at step t is computed using predetermined coefficients. The decoding process mainly involves noise removal, where noise is progressively reduced until the desired image is generated.
+1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely transformed into random noise. This process does not involve parameter learning; instead, the original image is input, and the image at step t is computed using predetermined coefficients. The decoding process mainly involves noise removal with UNet model, where noise is progressively reduced until the desired image is generated.
    1. ![](00_assets/image/ddpm.png)
 2. References:
    1. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
