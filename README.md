@@ -45,3 +45,5 @@
 1. https://www.youtube.com/watch?v=vAmKB7iPkWw
 2. https://github.com/hkproj/pytorch-paligemma
 3. https://huggingface.co/openbmb
+4. https://openai.com/index/gpt-4v-system-card/
+5. https://huggingface.co/google/paligemma-3b-pt-224
