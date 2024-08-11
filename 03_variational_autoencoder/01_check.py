@@ -22,16 +22,16 @@ def check_hf_vae():
         print(latents.shape)
         decoded_image = sdxl_vae.decode(latents).sample
         print(decoded_image.shape)
-        save_image(tensor=denormalize(decoded_image.clone()),
-                   fp=f"../00_assets/image/animal_faces_sdxl_vae_latent.png",
-                   nrow=4)
+        # save_image(tensor=denormalize(decoded_image.clone()),
+        #            fp=f"../00_assets/image/animal_faces_sdxl_vae_latent.png",
+        #            nrow=4)
         latents = sdxl_vae_fix.encode(batch[0]).latent_dist.sample()
         print(latents.shape)
         decoded_image = sdxl_vae_fix.decode(latents).sample
         print(decoded_image.shape)
-        save_image(tensor=denormalize(decoded_image.clone()),
-                   fp=f"../00_assets/image/animal_faces_sdxl_vae_fix_latent.png",
-                   nrow=4)
+        # save_image(tensor=denormalize(decoded_image.clone()),
+        #            fp=f"../00_assets/image/animal_faces_sdxl_vae_fix_latent.png",
+        #            nrow=4)
 
 
 def check_vae():
