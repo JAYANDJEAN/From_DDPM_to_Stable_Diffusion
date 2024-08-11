@@ -1,10 +1,9 @@
 import os
 from typing import Dict
-import numpy as np
 import torch
 from timeit import default_timer as timer
 from torchvision.utils import save_image
-from models import VanillaVAE
+from models import VanillaVAE, VQVAE
 from utils import animal_faces_loader, denormalize
 
 
@@ -84,7 +83,9 @@ if __name__ == '__main__':
         'epoch_save': 50,
         'epoch_awoken': None,
         'batch_size': 32,
-        'latent_dim': 512,
+        # 'latent_dim': 512,
+        'embedding_dim': 4,
+        'num_embeddings': 256,
         'lr': 1e-4,
         'img_channel': 3,
         'img_size': 512,

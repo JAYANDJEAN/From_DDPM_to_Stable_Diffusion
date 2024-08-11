@@ -46,7 +46,7 @@ def check_vae():
     print(loss)
 
     print("=" * 70)
-    vqvae = VQVAE(in_channels=3, embedding_dim=4, num_embeddings=3, img_size=512)
+    vqvae = VQVAE(in_channels=3, embedding_dim=4, num_embeddings=256, img_size=512)
     x = torch.randn(16, 3, 512, 512)
     latent = vqvae.encode(x)
     print("Model encoded size:", latent[0].size())

@@ -5,8 +5,6 @@
 1. The training data for the following experiments all use [animal-faces](https://www.kaggle.com/datasets/andrewmvd/animal-faces).
     1. ![faces](00_assets/image/animal_faces.jpg)
 
-# Inference
-
 ## Stable Diffusion 1
 
 1. Refer to the inference code of Stable Diffusion 1 to familiarize yourself with the model structure. The architecture diagram is as follows:
@@ -23,15 +21,19 @@
     1. https://github.com/Stability-AI/sd3-ref
     2. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
 
-# Train
-
 ## VAE
 
 1. Explore various VAE variants and train a VQVAE using the animal-faces dataset.
-   1. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
 2. References:
    1. https://github.com/AntixK/PyTorch-VAE
    2. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
+
+## DDPM
+
+1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely transformed into random noise. This process does not involve parameter learning; instead, the original image is input, and the image at step t is computed using predetermined coefficients. The decoding process mainly involves noise removal, where noise is progressively reduced until the desired image is generated.
+   1. ![](00_assets/image/ddpm.png)
+2. References:
+   1. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
 
 ## Tiny Stable Diffusion
 
@@ -42,10 +44,7 @@
    1. ![](00_assets/image/animal_faces_raw.png)
    2. ![](00_assets/image/animal_faces_sdxl_vae_latent.png)
 4. Method 3: First train a VAE on the animal-faces dataset, then convert the images to the latent space using this VAE before training.
-5.	DDPM code references:
-    1. https://github.com/hkproj/pytorch-ddpm/tree/main
-    2. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
-    3. https://github.com/abarankab/DDPM/tree/main
+
 
 ## Multimodal
 
