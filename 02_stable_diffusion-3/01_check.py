@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from diffusers import StableDiffusion3Pipeline, FluxPipeline
+from diffusers import StableDiffusion3Pipeline
 from diffusion import *
 from modelsummary import summary
 from sd3_infer import SD3Inferencer
