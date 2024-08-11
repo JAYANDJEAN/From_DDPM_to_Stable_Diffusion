@@ -11,10 +11,9 @@ def train(config: Dict):
     print('Model Training...............')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'use device: {device}')
-
     dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
-    vae = VanillaVAE(in_channels=config['img_channel'], image_size=config['img_size'],
-                     latent_dim=config['latent_dim']).to(device)
+    vae = VQVAE(in_channels=config['img_channel'], img_size=config['img_size'],
+                embedding_dim=config['embedding_dim'], num_embeddings=config['num_embeddings']).to(device)
     print('Total trainable parameters:', sum(p.numel() for p in vae.parameters() if p.requires_grad))
 
     epoch_awoken = config['epoch_awoken']
@@ -60,8 +59,8 @@ def generate(config: Dict):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # load model and evaluate
     with torch.no_grad():
-        vae = VanillaVAE(in_channels=config['img_channel'], image_size=config['img_size'],
-                         latent_dim=config['latent_dim']).to(device)
+        vae = VQVAE(in_channels=config['img_channel'], img_size=config['img_size'],
+                    embedding_dim=config['embedding_dim'], num_embeddings=config['num_embeddings']).to(device)
         base = config['epoch_awoken'] if config['epoch_awoken'] is not None else 0
 
         for i in range(config['epoch_save'] + base, config['epoch'] + base):
