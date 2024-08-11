@@ -2,43 +2,43 @@
 
 ## Data
 
-1. 以下实验的训练数据均使用 animal-faces，详见：https://www.kaggle.com/datasets/andrewmvd/animal-faces
+1. The training data for the following experiments all use animal-faces. For details, see：https://www.kaggle.com/datasets/andrewmvd/animal-faces
     1. ![faces](00_assets/image/animal_faces.jpg)
 
 ## Stable Diffusion 1
 
-1. 查看 Stable Diffusion 1 的 inference 代码，熟悉模型结构，其架构示意图如下：
+1. Refer to the inference code of Stable Diffusion 1 to familiarize yourself with the model structure. The architecture diagram is as follows:
     1. ![sd1](00_assets/image/sd1.png)
-2. 参考：
+2. References:
     1. https://github.com/kjsman/stable-diffusion-pytorch
     2. https://github.com/hkproj/pytorch-stable-diffusion
 
 ## Stable Diffusion 3
 
-1. 查看 Stable Diffusion 3 的 inference 代码，熟悉模型结构，其架构示意图如下：
+1. Refer to the inference code of Stable Diffusion 3 to be familiar with the model structure. The architecture diagram is as follows:
     1. ![sd3](00_assets/image/sd3.png)
-2. 参考：
+2. References:
     1. https://github.com/Stability-AI/sd3-ref
     2. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
 
 ## VAE
 
-1. 了解各种VAE变体，用 animal-faces 训练一个 VQVAE
+1. Explore various VAE variants and train a VQVAE using the animal-faces dataset.
    1. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
-2. 参考：
+2. References:
    1. https://github.com/AntixK/PyTorch-VAE
    2. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
 
 ## Tiny Stable Diffusion
 
-1. 尝试自己训练一个小型的Stable Diffusion，硬件只有一张16GB的RTX-4080。
-2. 方法1: 将所有512\*512的图片转成64\*64，然后在图片空间直接训练，重新生成图片如下，效果虽然不是很好，但起码狗是狗猫是猫。
+1. Attempt to train a small-scale Stable Diffusion model on hardware with only one 16GB RTX-4080 GPU.
+2. Method 1: Downscale all 512x512 images to 64x64 and train directly in the image space. The regenerated images are shown below. While the results are not perfect, at least dogs look like dogs and cats look like cats.
     1. ![](00_assets/image/animal_faces_generated_method1.png)
-3. 方法2：直接用sdxl-vae将图片转换到隐藏空间，再训练。sdxl-vae的效果还不错，如下所示。训练代码基本与方法1相同，不再重跑。
+3. Method 2: Convert the images to the latent space using sdxl-vae before training. The results of sdxl-vae are shown below. The training code is essentially the same as Method 1, so it won’t be rerun.
    1. ![](00_assets/image/animal_faces_raw.png)
    2. ![](00_assets/image/animal_faces_sdxl_vae_latent.png)
-4. 方法3：用animal-faces数据集先训练一个VAE，用VAE将图片转换到隐藏空间再训练。
-5. DDPM 代码可参考：
+4. Method 3: First train a VAE on the animal-faces dataset, then convert the images to the latent space using this VAE before training.
+5.	DDPM code references:
     1. https://github.com/hkproj/pytorch-ddpm/tree/main
     2. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
     3. https://github.com/abarankab/DDPM/tree/main
