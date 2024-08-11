@@ -41,8 +41,8 @@
 2. Method 1: Downscale all 512x512 images to 64x64 and train directly in the image space. The regenerated images are shown below. While the results are not perfect, at least dogs look like dogs and cats look like cats.
     1. ![](00_assets/image/animal_faces_generated_method1.png)
 3. Method 2: Convert the images to the latent space using sdxl-vae before training. The results of sdxl-vae are shown below. The training code is essentially the same as Method 1, so it won’t be rerun.
-   1. ![](00_assets/image/animal_faces_raw.png){:height="36px" width="36px"}
-   2. ![](00_assets/image/animal_faces_sdxl_vae_latent.png){:height="36px" width="36px"}
+   1. ![](00_assets/image/animal_faces_raw.png)
+   2. ![](00_assets/image/animal_faces_sdxl_vae_latent.png)
 4. Method 3: First train a VAE on the animal-faces dataset, then convert the images to the latent space using this VAE before training.
 
 
