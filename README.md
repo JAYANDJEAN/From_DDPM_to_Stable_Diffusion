@@ -2,8 +2,10 @@
 
 ## Data
 
-1. The training data for the following experiments all use animal-faces. For details, see：https://www.kaggle.com/datasets/andrewmvd/animal-faces
+1. The training data for the following experiments all use [animal-faces](https://www.kaggle.com/datasets/andrewmvd/animal-faces).
     1. ![faces](00_assets/image/animal_faces.jpg)
+
+# Inference
 
 ## Stable Diffusion 1
 
@@ -20,6 +22,8 @@
 2. References:
     1. https://github.com/Stability-AI/sd3-ref
     2. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
+
+# Train
 
 ## VAE
 
