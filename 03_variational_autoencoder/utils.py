@@ -11,7 +11,6 @@ def denormalize(tensor):
     device = tensor.device
     mean = torch.tensor(means).view(1, 3, 1, 1).to(device)
     std = torch.tensor(stds).view(1, 3, 1, 1).to(device)
-    tensor = tensor
     return tensor * std + mean
 
 

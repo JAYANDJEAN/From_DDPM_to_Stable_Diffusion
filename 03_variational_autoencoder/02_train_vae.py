@@ -5,6 +5,7 @@ from timeit import default_timer as timer
 from torchvision.utils import save_image
 from models import VanillaVAE, VQVAE
 from utils import animal_faces_loader, denormalize
+from torchvision import transforms
 
 
 def train(config: Dict):
@@ -51,27 +52,27 @@ def train(config: Dict):
         images = batch_image[0].to(device)
         latent = vqvae.encode(images)
         reconstruction = vqvae.decode(latent[0])
-        save_image(tensor=denormalize(images),
-                   fp=f'../00_assets/image/vae_raw_{epoch}.png',
+
+        result = torch.cat((images, reconstruction), dim=0)
+        result = transforms.Resize((64, 64))(result)
+
+        save_image(tensor=denormalize(result),
+                   fp=f'../00_assets/image/vae_raw_recons_{epoch}.png',
                    nrow=config['nrow'])
-        save_image(tensor=denormalize(reconstruction),
-                   fp=f'../00_assets/image/vae_reconstruction_{epoch}.png',
-                   nrow=config['nrow'])
-        print(f'animal_face_reconstruction_{epoch}.png is done!')
 
 
 if __name__ == '__main__':
     modelConfig = {
-        'epoch': 200,
+        'epoch': 100,
         'epoch_save': 25,
         'epoch_awoken': None,
-        'batch_size': 16,
+        'batch_size': 4,
         'embedding_dim': 4,
         'num_embeddings': 128,
-        'lr': 1e-5,
+        'lr': 3 * 1e-4,
         'img_channel': 3,
         'img_size': 512,
-        'hidden_dims': [16, 32, 64],
+        'hidden_dims': [32, 64, 128],
         'nrow': 4,
         'model_dir': '../00_assets/model_vae/'
     }
