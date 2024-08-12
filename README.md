@@ -24,7 +24,7 @@
    │       │   └── vocab.json
    │       ├── model_sd3/
    │       │   ├── clip_g.safetensors
-   │       │   ├── ...
+   │       │   └── ...
    │       └── image/
    ├── 01_stable_diffusion-1/
    ├── ...
@@ -54,7 +54,7 @@
 2. The results of VQVAE are shown below. The first row is the original images, and the second row is the
    reconstructed images.
     1. ![](00_assets/image/animal_faces_vqvae.png)
-3. The results of sdxl-vae are shown below.
+3. The results of [sdxl-vae](https://huggingface.co/stabilityai/sdxl-vae) are shown below.
     1. ![](00_assets/image/animal_faces_sdxl_vae.png)
 4. References:
     1. https://github.com/AntixK/PyTorch-VAE
