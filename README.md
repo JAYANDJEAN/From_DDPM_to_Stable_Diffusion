@@ -42,7 +42,8 @@
     1. ![](00_assets/image/animal_faces_generated_method1.png)
 3. Method 2: Convert the images to the latent space using sdxl-vae before training. The results of sdxl-vae are shown below. The first row is the original images, and the second row is the reconstructed images. The training code is essentially the same as Method 1, so it won’t be rerun.
    1. ![](00_assets/image/animal_faces_sdxl_vae.png)
-4. Method 3: First train a VAE on the animal-faces dataset, then convert the images to the latent space using this VAE before training.
+4. Method 3: First train a VQVAE on the animal-faces dataset, then convert the images to the latent space using this VQVAE before training.
+   1. ![](00_assets/image/animal_faces_vqvae.png)
 
 
 ## Multimodal

@@ -12,7 +12,8 @@ def train(config: Dict):
     print('Model Training...............')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'use device: {device}')
-    dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
+    dataloader = animal_faces_loader('val', config['batch_size'], config['img_size'])
+    train_loader = animal_faces_loader('train', config['batch_size'], config['img_size'])
     vqvae = VQVAE(in_channels=config['img_channel'], img_size=config['img_size'],
                   embedding_dim=config['embedding_dim'],
                   num_embeddings=config['num_embeddings'],
@@ -48,32 +49,29 @@ def train(config: Dict):
         print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
               f"time: {(end_time - start_time):.3f}s, ")
 
-        _, batch_image = next(enumerate(dataloader))
+        _, batch_image = next(enumerate(train_loader))
         images = batch_image[0].to(device)
         latent = vqvae.encode(images)
         reconstruction = vqvae.decode(latent[0])
-
         result = torch.cat((images, reconstruction), dim=0)
-        result = transforms.Resize((64, 64))(result)
-
+        result = transforms.Resize((128, 128))(result)
         save_image(tensor=denormalize(result),
                    fp=f'../00_assets/image/vae_raw_recons_{epoch}.png',
-                   nrow=config['nrow'])
+                   nrow=config['batch_size'],
+                   padding=0)
 
 
 if __name__ == '__main__':
     modelConfig = {
-        'epoch': 100,
-        'epoch_save': 25,
+        'epoch': 40,
         'epoch_awoken': None,
-        'batch_size': 4,
+        'batch_size': 7,
         'embedding_dim': 4,
         'num_embeddings': 128,
         'lr': 3 * 1e-4,
         'img_channel': 3,
         'img_size': 512,
         'hidden_dims': [32, 64, 128],
-        'nrow': 4,
         'model_dir': '../00_assets/model_vae/'
     }
 

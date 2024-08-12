@@ -14,12 +14,12 @@ def denormalize(tensor):
     return tensor * std + mean
 
 
-def animal_faces_loader(batch_size: int, img_size: Optional[int]):
+def animal_faces_loader(tp: str, batch_size: int, img_size: Optional[int]):
     transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
         transforms.Normalize(mean=means, std=stds)
     ])
-    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    dataset = datasets.ImageFolder(root=f'../00_assets/datasets/afhq/{tp}', transform=transform)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return dataloader
