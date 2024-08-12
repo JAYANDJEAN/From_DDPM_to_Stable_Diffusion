@@ -100,7 +100,7 @@ class VanillaVAE(BaseVAE):
         eps = torch.randn_like(std)
         # z: (batch_size, latent_dim)
         z = eps * std + mu
-        return z, mu, log_var
+        return [z, mu, log_var]
 
     def decode(self, z: Tensor) -> Tensor:
         result = self.decoder_input(z)
@@ -138,10 +138,7 @@ class VectorQuantizer(nn.Module):
     [1] https://github.com/deepmind/sonnet/blob/v2/sonnet/src/nets/vqvae.py
     """
 
-    def __init__(self,
-                 num_embeddings: int,
-                 embedding_dim: int,
-                 beta: float = 0.25):
+    def __init__(self, num_embeddings: int, embedding_dim: int, beta: float = 0.25):
         super(VectorQuantizer, self).__init__()
         self.K = num_embeddings
         self.D = embedding_dim
@@ -150,7 +147,7 @@ class VectorQuantizer(nn.Module):
         self.embedding = nn.Embedding(self.K, self.D)
         self.embedding.weight.data.uniform_(-1 / self.K, 1 / self.K)
 
-    def forward(self, latents: Tensor) -> Tensor:
+    def forward(self, latents: Tensor) -> tuple[Tensor, Tensor]:
         # [B x D x H x W] -> [B x H x W x D]
         latents = latents.permute(0, 2, 3, 1).contiguous()
         latents_shape = latents.shape
@@ -163,12 +160,12 @@ class VectorQuantizer(nn.Module):
                2 * torch.matmul(flat_latents, self.embedding.weight.t())  # [BHW x K]
 
         # Get the encoding that has the min distance
-        encoding_inds = torch.argmin(dist, dim=1).unsqueeze(1)  # [BHW, 1]
+        encoding_index = torch.argmin(dist, dim=1).unsqueeze(1)  # [BHW, 1]
 
         # Convert to one-hot encodings
         device = latents.device
-        encoding_one_hot = torch.zeros(encoding_inds.size(0), self.K, device=device)
-        encoding_one_hot.scatter_(1, encoding_inds, 1)  # [BHW x K]
+        encoding_one_hot = torch.zeros(encoding_index.size(0), self.K, device=device)
+        encoding_one_hot.scatter_(1, encoding_index, 1)  # [BHW x K]
 
         # Quantize the latents
         quantized_latents = torch.matmul(encoding_one_hot, self.embedding.weight)  # [BHW, D]
@@ -182,25 +179,28 @@ class VectorQuantizer(nn.Module):
 
         # Add the residue back to the latents
         quantized_latents = latents + (quantized_latents - latents).detach()
-
-        return quantized_latents.permute(0, 3, 1, 2).contiguous(), vq_loss  # [B x D x H x W]
+        quantized_latents = quantized_latents.permute(0, 3, 1, 2).contiguous()
+        return quantized_latents, vq_loss  # [B x D x H x W]
 
 
 class ResidualLayer(nn.Module):
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int):
-        super(ResidualLayer, self).__init__()
-        self.residual = nn.Sequential(nn.Conv2d(in_channels, out_channels,
-                                                kernel_size=3, padding=1, bias=False),
-                                      nn.ReLU(True),
-                                      nn.Conv2d(out_channels, out_channels,
-                                                kernel_size=1, bias=False))
+    def __init__(self, ch_in: int, ch_out: int):
+        super().__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.ReLU(True),
+            nn.Conv2d(ch_out, ch_out, kernel_size=1, stride=1, padding=0, bias=False)
+        )
+        if ch_in != ch_out:
+            self.residual = nn.Conv2d(ch_in, ch_out, kernel_size=1, stride=1, padding=0)
+        else:
+            self.residual = nn.Identity()
 
     def forward(self, x: Tensor) -> Tensor:
-        return x + self.residual(x)
+        return self.conv(x) + self.residual(x)
 
 
+# copy from sd1 vae
 class SelfAttention(nn.Module):
     def __init__(self, n_heads: int, n_channels: int):
         super().__init__()
@@ -222,6 +222,7 @@ class SelfAttention(nn.Module):
         return out
 
 
+# copy from sd1 vae
 class AttentionBlock(nn.Module):
     def __init__(self, channels: int):
         super().__init__()
@@ -239,121 +240,33 @@ class AttentionBlock(nn.Module):
         return x
 
 
+# copy from sd1 vae
 class ResidualBlock(nn.Module):
     def __init__(self, ch_in: int, ch_out: int):
         super().__init__()
         assert ch_in % 32 == 0
-        self.conv_1 = nn.Sequential(
+        self.conv = nn.Sequential(
             nn.GroupNorm(32, ch_in),
             nn.SiLU(),
-            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1)
-        )
-        self.conv_2 = nn.Sequential(
+            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1),
             nn.GroupNorm(32, ch_out),
             nn.SiLU(),
             nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1)
         )
         if ch_in != ch_out:
-            self.residual_layer = nn.Conv2d(ch_in, ch_out, kernel_size=1, stride=1, padding=0)
+            self.residual = nn.Conv2d(ch_in, ch_out, kernel_size=1, stride=1, padding=0)
         else:
-            self.residual_layer = nn.Identity()
+            self.residual = nn.Identity()
 
     def forward(self, x: Tensor):
-        out = self.conv_2(self.conv_1(x)) + self.residual_layer(x)
+        out = self.conv(x) + self.residual(x)
         return out
 
 
-# todo
-class SDVAE(BaseVAE):
-    def __init__(self, in_channels: int, image_size: int, latent_dim: int, hidden_dims: List = None):
-        super().__init__()
-        assert image_size % 8 == 0
-        self.scale = image_size // 8
-        self.latent_dim = latent_dim
-
-        if hidden_dims is None:
-            hidden_dims = [32, 64, 128, 256]
-
-        assert len(hidden_dims) == 4
-
-        modules = []
-        for i in range(len(hidden_dims)):
-            ch_in = in_channels if i == 0 else hidden_dims[i - 1]
-            stride = 1 if i == 0 else 2
-            ch_out = hidden_dims[i]
-            modules.append(
-                nn.Sequential(
-                    nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=stride, padding=1),
-                    ResidualBlock(ch_out, ch_out)
-                )
-            )
-        modules.append(
-            nn.Sequential(
-                AttentionBlock(hidden_dims[-1]),
-                ResidualBlock(hidden_dims[-1], hidden_dims[-1]),
-                nn.GroupNorm(32, hidden_dims[-1]),
-                nn.SiLU(),
-                nn.Conv2d(hidden_dims[-1], 8, kernel_size=3, stride=1, padding=1),
-            )
-        )
-        self.encoder = nn.Sequential(*modules)
-
-        hidden_dims.reverse()
-
-        modules = [
-            nn.Sequential(
-                nn.Conv2d(4, hidden_dims[0], kernel_size=3, stride=1, padding=1),
-                ResidualBlock(hidden_dims[0], hidden_dims[0]),
-                AttentionBlock(hidden_dims[0]),
-            )
-        ]
-
-        for i in range(len(hidden_dims) - 1):
-            modules.append(
-                nn.Sequential(
-                    nn.Upsample(scale_factor=2),
-                    nn.Conv2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=3, stride=1, padding=1),
-                    ResidualBlock(hidden_dims[i + 1], hidden_dims[i + 1]),
-                )
-            )
-        modules.append(
-            nn.Sequential(
-                nn.GroupNorm(8, hidden_dims[-1]),
-                nn.SiLU(),
-                nn.Conv2d(hidden_dims[-1], in_channels, kernel_size=3, stride=1, padding=1),
-            )
-        )
-
-        self.decoder = nn.Sequential(*modules)
-
-    def encode(self, x: Tensor) -> Tensor:
-        # x: (bs, 3, 512, 512) -> (bs, 4, 64, 64)
-        x = self.encoder(x)
-        mean, log_variance = torch.chunk(x, 2, dim=1)
-
-        log_variance = torch.clamp(log_variance, -30, 20)
-        std = log_variance.exp().sqrt()
-
-        noise = torch.randn_like(std)
-        x = mean + std * noise
-        return x
-
-    def decode(self, z: Tensor) -> Tensor:
-        # x: (bs, 4, 64, 64) -> (bs, 3, 512, 512)
-        return self.decoder(z)
-
-
 class VQVAE(BaseVAE):
-    def __init__(self,
-                 in_channels: int,
-                 embedding_dim: int,
-                 num_embeddings: int,
-                 hidden_dims: List = None,
-                 beta: float = 0.25,
-                 img_size: int = 64,
-                 **kwargs) -> None:
-        super(VQVAE, self).__init__()
-
+    def __init__(self, in_channels: int, embedding_dim: int, num_embeddings: int,
+                 hidden_dims: List = None, beta: float = 0.25, img_size: int = 64, **kwargs):
+        super().__init__()
         self.embedding_dim = embedding_dim
         self.num_embeddings = num_embeddings
         self.img_size = img_size
@@ -367,17 +280,17 @@ class VQVAE(BaseVAE):
         for h_dim in hidden_dims:
             modules.append(
                 nn.Sequential(
-                    nn.Conv2d(in_channels, out_channels=h_dim,
-                              kernel_size=4, stride=2, padding=1),
-                    nn.LeakyReLU())
+                    nn.Conv2d(in_channels, out_channels=h_dim, kernel_size=4, stride=2, padding=1),
+                    nn.LeakyReLU()
+                )
             )
             in_channels = h_dim
 
         modules.append(
             nn.Sequential(
-                nn.Conv2d(in_channels, in_channels,
-                          kernel_size=3, stride=1, padding=1),
-                nn.LeakyReLU())
+                nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1),
+                nn.LeakyReLU()
+            )
         )
 
         for _ in range(6):
@@ -386,25 +299,19 @@ class VQVAE(BaseVAE):
 
         modules.append(
             nn.Sequential(
-                nn.Conv2d(in_channels, embedding_dim,
-                          kernel_size=1, stride=1),
-                nn.LeakyReLU())
+                nn.Conv2d(in_channels, embedding_dim, kernel_size=1, stride=1),
+                nn.LeakyReLU()
+            )
         )
 
         self.encoder = nn.Sequential(*modules)
 
-        self.vq_layer = VectorQuantizer(num_embeddings,
-                                        embedding_dim,
-                                        self.beta)
+        self.vq_layer = VectorQuantizer(num_embeddings, embedding_dim, self.beta)
 
         # Build Decoder
         modules = [
             nn.Sequential(
-                nn.Conv2d(embedding_dim,
-                          hidden_dims[-1],
-                          kernel_size=3,
-                          stride=1,
-                          padding=1),
+                nn.Conv2d(embedding_dim, hidden_dims[-1], kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU()
             )
         ]
@@ -418,21 +325,17 @@ class VQVAE(BaseVAE):
         for i in range(len(hidden_dims) - 1):
             modules.append(
                 nn.Sequential(
-                    nn.ConvTranspose2d(hidden_dims[i],
-                                       hidden_dims[i + 1],
-                                       kernel_size=4,
-                                       stride=2,
-                                       padding=1),
-                    nn.LeakyReLU())
+                    nn.ConvTranspose2d(hidden_dims[i], hidden_dims[i + 1], kernel_size=4, stride=2, padding=1),
+                    nn.LeakyReLU()
+                )
             )
 
         modules.append(
             nn.Sequential(
-                nn.ConvTranspose2d(hidden_dims[-1],
-                                   out_channels=3,
-                                   kernel_size=4,
-                                   stride=2, padding=1),
-                nn.Tanh()))
+                nn.ConvTranspose2d(hidden_dims[-1], out_channels=3, kernel_size=4, stride=2, padding=1),
+                nn.Tanh()
+            )
+        )
 
         self.decoder = nn.Sequential(*modules)
 

@@ -50,8 +50,7 @@ def train(config: Dict):
             min_train_loss = train_loss
             torch.save(vqvae.state_dict(), os.path.join(config['model_dir'], f'vqvae.pth'))
 
-        print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
-              f"time: {(end_time - start_time):.3f}s, ")
+        print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, time: {(end_time - start_time):.3f}s")
 
         _, batch_image = next(enumerate(train_loader))
         images = batch_image[0].to(device)
