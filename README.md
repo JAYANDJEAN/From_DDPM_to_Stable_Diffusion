@@ -7,7 +7,7 @@
     1. ![faces](00_assets/image/animal_faces.jpg)
 2. Download stable diffusion 1 weights
    from [here](https://huggingface.co/jinseokim/stable-diffusion-pytorch-data/resolve/main/data.v20221029.tar).
-3. Download stable diffusion 1 weights
+3. Download stable diffusion 3 weights
    from [stable-diffusion-3-medium](https://huggingface.co/stabilityai/stable-diffusion-3-medium)
 4. Your folders should be like this:
    ```plaintext
@@ -47,13 +47,16 @@
 2. References:
     1. https://github.com/Stability-AI/sd3-ref
     2. https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_3/pipeline_stable_diffusion_3.py#L131
-       https://huggingface.co/stabilityai/stable-diffusion-3-medium
-    3.
 
 ## VAE
 
 1. Explore various VAE variants and train a VQVAE using the animal-faces dataset.
-2. References:
+2. The results of VQVAE are shown below. The first row is the original images, and the second row is the
+   reconstructed images.
+    1. ![](00_assets/image/animal_faces_vqvae.png)
+3. The results of sdxl-vae are shown below.
+    1. ![](00_assets/image/animal_faces_sdxl_vae.png)
+4. References:
     1. https://github.com/AntixK/PyTorch-VAE
     2. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
 
@@ -73,13 +76,7 @@
 2. Method 1: Downscale all 512x512 images to 64x64 and train directly in the image space. The regenerated images are
    shown below. While the results are not perfect, at least dogs look like dogs and cats look like cats.
     1. ![](00_assets/image/animal_faces_generated_method1.png)
-3. Method 2: Convert the images to the latent space using sdxl-vae before training. The results of sdxl-vae are shown
-   below. The first row is the original images, and the second row is the reconstructed images. The training code is
-   essentially the same as Method 1, so it won’t be rerun.
-    1. ![](00_assets/image/animal_faces_sdxl_vae.png)
-4. Method 3: First train a VQVAE on the animal-faces dataset, then convert the images to the latent space using this
-   VQVAE before training.
-    1. ![](00_assets/image/animal_faces_vqvae.png)
+3. Method 2: Convert the images to the latent space using VQVAE. 
 
 ## Multimodal
 
