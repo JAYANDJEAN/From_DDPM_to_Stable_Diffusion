@@ -29,7 +29,7 @@ def train(config: Dict):
         print(f'Model weight has loaded from ckpt_{epoch_awoken}.pth!')
 
     optimizer = torch.optim.AdamW(vqvae.parameters(), lr=config['lr'], weight_decay=1e-4)
-
+    min_train_loss = float('inf')
     for epoch in range(config['epoch']):
         start_time = timer()
         losses = 0
@@ -45,6 +45,10 @@ def train(config: Dict):
 
         train_loss = losses / len(list(dataloader))
         end_time = timer()
+
+        if train_loss < min_train_loss:
+            min_train_loss = train_loss
+            torch.save(vqvae.state_dict(), os.path.join(config['model_dir'], f'vqvae.pth'))
 
         print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
               f"time: {(end_time - start_time):.3f}s, ")
