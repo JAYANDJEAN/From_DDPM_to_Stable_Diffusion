@@ -7,23 +7,35 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
+import yaml
 
 torch.manual_seed(0)
 batch_size = 128
 n_step = 1000
 n_class = 10
 
+with open('../00_assets/yml/tiny_sd_direct.yml', 'r') as file:
+    config = yaml.safe_load(file)
+
+
+def check_animal_faces():
+    dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
+
+    for images, labels in dataloader:
+        print(images.shape)
+        save_image(tensor=denormalize(images.clone()),
+                   fp=f"../00_assets/image/animal_faces.png",
+                   nrow=6,
+                   padding=0)
+        break
+
 
 def visual_alpha():
-    T = 1000
-    beta_start = 0.0001
-    beta_end = 0.02
-    betas = np.linspace(beta_start, beta_end, T)
+    betas = np.linspace(config['beta_1'], config['beta_T'], config['T'])
     alphas = 1 - betas
     alphas_bar = np.cumprod(alphas)
     sqrt_alphas_bar = np.sqrt(alphas_bar)
     sqrt_one_minus_alphas_bar = np.sqrt(1 - alphas_bar)
-
     plt.figure(figsize=(12, 8))
     plt.plot(sqrt_alphas_bar, label='sqrt_alphas_bar')
     plt.plot(sqrt_one_minus_alphas_bar, label='sqrt_one_minus_alphas_bar', color='orange')
@@ -52,43 +64,28 @@ def check_diffusion_output():
     t = torch.randint(0, n_step, (batch_size,))
     y = torch.randint(0, n_class, (batch_size,))
     x1 = torch.rand(batch_size, 3, 64, 64)
-    diffusion = Diffusion(channel_img=3, channel_multy=[1, 2, 4, 8], num_class=n_class)
+    diffusion = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
+                          num_class=config['num_class'], channel_multy=config['channel_multy'],
+                          dropout=config['dropout'])
     x_recon = diffusion(x1, t, y)
     assert x_recon.shape == x1.shape
     print(f"\nnumber of parameters: {sum([p.numel() for p in diffusion.parameters()])}")
 
 
-def check_animal_faces():
-    means = [0.485, 0.456, 0.406]
-    stds = [0.229, 0.224, 0.225]
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=means, std=stds)
-    ])
-    dataset = datasets.ImageFolder(root='../00_assets/datasets/afhq/train', transform=transform)
-    dataloader = DataLoader(dataset, batch_size=36, shuffle=True, num_workers=4)
-
-    for images, labels in dataloader:
-        print(images.shape)
-        save_image(tensor=denormalize(images.clone(), means, stds),
-                   fp=f"../00_assets/image/animal_faces.png",
-                   nrow=6)
-        break
-
-
 def check_warmup():
-    diffusion = Diffusion(channel_img=3, channel_multy=[1, 2, 4, 8], num_class=n_class)
-    optimizer = torch.optim.AdamW(diffusion.parameters(), lr=1e-5, weight_decay=1e-4)
+    diffusion = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
+                          num_class=config['num_class'], channel_multy=config['channel_multy'],
+                          dropout=config['dropout'])
+    optimizer = torch.optim.AdamW(diffusion.parameters(), lr=config['lr'], weight_decay=1e-5)
     scheduler = CosineWarmupScheduler(optimizer=optimizer,
-                                      warmup_epochs=7,
-                                      max_lr=1e-4,
-                                      total_epochs=70)
+                                      warmup_epochs=config['epoch'] // 7,
+                                      max_lr=config['max_lr'],
+                                      total_epochs=config['epoch'])
 
-    for epoch in range(70):
+    for epoch in range(config['epoch']):
         optimizer.step()
         current_lr = scheduler.optimizer.param_groups[0]['lr']
-        print(f"epoch: {epoch}, current_lr: {current_lr:.6f}")
+        print(f"epoch: {epoch:03}, current_lr: {current_lr:.7f}")
         scheduler.step()
 
 

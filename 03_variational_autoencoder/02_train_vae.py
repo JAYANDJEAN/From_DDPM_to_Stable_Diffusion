@@ -59,7 +59,7 @@ def train(config: Dict):
         result = torch.cat((images, reconstruction), dim=0)
         result = transforms.Resize((128, 128))(result)
         save_image(tensor=denormalize(result),
-                   fp=f'../00_assets/image/vae_raw_recons_{epoch}.png',
+                   fp=f'../00_assets/image/vae_raw_recons_{epoch:03}.png',
                    nrow=config['batch_size'],
                    padding=0)
 

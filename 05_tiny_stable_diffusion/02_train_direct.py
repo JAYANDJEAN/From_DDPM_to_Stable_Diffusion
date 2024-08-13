@@ -6,6 +6,7 @@ from timeit import default_timer as timer
 from torchvision.utils import save_image
 from utils import SamplerDDPM, TrainerDDPM, CosineWarmupScheduler, denormalize, animal_faces_loader
 from diffusion import Diffusion
+import yaml
 
 
 def train(config: Dict):
@@ -32,7 +33,8 @@ def train(config: Dict):
 
     dataloader = animal_faces_loader(config['batch_size'], config['img_size'])
     diffusion = Diffusion(channel_img=config['img_channel'], channel_base=config['channel'],
-                          channel_multy=config['channel_multy'], dropout=config['dropout']).to(device)
+                          num_class=config['num_class'], channel_multy=config['channel_multy'],
+                          dropout=config['dropout']).to(device)
     print('Total trainable parameters:', sum(p.numel() for p in diffusion.parameters() if p.requires_grad))
 
     if config['epoch_awoken'] is not None:
@@ -49,7 +51,7 @@ def train(config: Dict):
 
     optimizer = torch.optim.AdamW(diffusion.parameters(), lr=config['lr'], weight_decay=1e-5)
     scheduler = CosineWarmupScheduler(optimizer=optimizer,
-                                      warmup_epochs=config['epoch'] // 10,
+                                      warmup_epochs=config['epoch'] // 7,
                                       max_lr=config['max_lr'],
                                       total_epochs=config['epoch'])
     trainer = TrainerDDPM(diffusion, config['beta_1'], config['beta_T'], config['T']).to(device)
@@ -58,7 +60,6 @@ def train(config: Dict):
     for epoch in range(config['epoch']):
         start_time = timer()
         losses = 0
-
         for images, labels in dataloader:
             optimizer.zero_grad()
             bs = images.shape[0]
@@ -77,41 +78,21 @@ def train(config: Dict):
         current_lr = scheduler.optimizer.param_groups[0]['lr']
         print(f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
               f"time: {(end_time - start_time):.3f}s, "
-              f"current_lr: {current_lr:.4f}, config_lr: {config['lr']:.4f}")
+              f"lr_cur: {current_lr:.7f}, lr_base: {config['lr']:.7f}")
 
-        # scheduler.step()
+        scheduler.step()
 
         if train_loss < min_train_loss:
             min_train_loss = train_loss
-            torch.save(diffusion.state_dict(), os.path.join(config['model_dir'], f"ckpt_{base + config['epoch']}.pth"))
+            torch.save(diffusion.state_dict(),
+                       os.path.join(config['model_dir'], f"ckpt_{(base + config['epoch']):03}.pth"))
 
         generate(base + epoch)
 
 
 if __name__ == '__main__':
-    modelConfig = {
-        'epoch': 10,
-        'epoch_awoken': None,
-        'batch_size': 32,
-        'img_channel': 3,
-        'img_size': 64,
-        'num_class': 3,
-        'T': 1000,
-        'beta_1': 0.0015,
-        'beta_T': 0.0195,
-        'channel': 128,
-        'channel_multy': [1, 2, 2, 2],
-        'dropout': 0.1,
-        'lr': 2.0e-06,
-        'max_lr': 1e-4,
-        'grad_clip': 1.,
-        'train_rand': 0.01,
-        'w': 1.8,  # ????
-        'nrow': 7,
-        'model_dir': '../00_assets/model_animal3/'
-    }
+    with open('../00_assets/yml/tiny_sd_direct.yml', 'r') as file:
+        model_config = yaml.safe_load(file)
 
-    os.makedirs(modelConfig['model_dir'], exist_ok=True)
-
-    train(modelConfig)
-
+    os.makedirs(model_config['model_dir'], exist_ok=True)
+    train(model_config)

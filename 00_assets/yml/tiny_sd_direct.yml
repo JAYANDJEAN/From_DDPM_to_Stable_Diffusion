@@ -1,0 +1,19 @@
+'epoch': 70
+'epoch_awoken':
+'batch_size': 32
+'img_channel': 3
+'img_size': 64
+'num_class': 3
+'T': 1000
+'beta_1': 0.0015
+'beta_T': 0.0195
+'channel': 128
+'channel_multy': [ 1, 2, 2, 2 ]
+'dropout': 0.1
+'lr': 2.0e-6
+'max_lr': 1.0e-4
+'grad_clip': 1.
+'train_rand': 0.05
+'w': 1.8
+'nrow': 7
+'model_dir': '../00_assets/model_animal3/'
