@@ -60,6 +60,16 @@
     1. https://github.com/AntixK/PyTorch-VAE
     2. https://github.com/CompVis/latent-diffusion/blob/main/ldm/models/autoencoder.py
 
+## Vision Transformer
+
+1. ViT (Vision Transformer) is a model that applies the Transformer architecture to computer vision tasks. Unlike
+   traditional Convolutional Neural Networks (CNNs), ViT directly divides an image into fixed-size patches and flattens
+   them into sequences, similar to word embeddings in natural language processing.
+2. References:
+    1. https://github.com/lucidrains/vit-pytorch
+
+## CLIP
+
 ## DDPM
 
 1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely
@@ -76,7 +86,8 @@
 2. Method 1: Downscale all 512x512 images to 64x64 and train directly in the image space. The regenerated images are
    shown below. While the results are not perfect, at least dogs look like dogs and cats look like cats.
     1. ![](00_assets/image/animal_faces_generated_method1.png)
-3. Method 2: Convert the images to the latent space using VQVAE. 
+3. Method 2: Convert the images to the latent space using VQVAE. Since the code is basically the same as in Method 1, I
+   did not rerun it.
 
 ## Multimodal
 
