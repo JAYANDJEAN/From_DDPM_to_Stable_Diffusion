@@ -3,10 +3,9 @@ from vit_pytorch import ViT
 
 import os
 from typing import Dict
-import torch
 from timeit import default_timer as timer
 from torch.nn import CrossEntropyLoss
-from data import animal_faces_loader
+from utils import animal_faces_loader
 
 
 def train(config: Dict):
@@ -56,8 +55,7 @@ def train(config: Dict):
             for images, labels in test_loader:
                 images = images.to(device)
                 labels = labels.to(device)
-                outputs = vit(images)
-                _, predicted = torch.max(outputs.logits, 1)
+                predicted = torch.argmax(vit(images), dim=1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
         accuracy = 100 * correct / total
@@ -68,7 +66,7 @@ if __name__ == '__main__':
     model_config = {
         'epoch': 10,
         'batch_size': 32,
-        'image_size': 512,
+        'image_size': 128,
         'patch_size': 32,
         'num_classes': 3,
         'dim': 512,

@@ -70,6 +70,10 @@
 
 ## CLIP
 
+1. 121
+2. References:
+   1. https://huggingface.co/google/siglip-so400m-patch14-384
+
 ## DDPM
 
 1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely

@@ -2,6 +2,7 @@ import torch
 import clip
 from PIL import Image
 import numpy as np
+from model_clip_vit import CLIP
 
 
 def check_clip():
@@ -26,5 +27,22 @@ def check_clip():
     print("Label probs:", probs)
 
 
+def check_clip_model():
+    # opened_file = "../00_assets/model_clip/ViT-L-14.pt"
+    # model = torch.jit.load(opened_file, map_location="cpu")
+    # state_dict = model.state_dict()
+    image = torch.randn(5, 3, 224, 224)
+    text = torch.randint(low=0, high=100, size=(5, 77))
+    model = CLIP(embed_dim=768, image_resolution=224, vision_layers=24,
+                 vision_width=1024, vision_patch_size=14, context_length=77,
+                 vocab_size=49408, transformer_width=768, transformer_heads=12,
+                 transformer_layers=12)
+
+    image_features = model.encode_image(image)
+    print(f"image_features shape: {image_features.shape}")
+    text_features = model.encode_text(text)
+    print(f"text_features shape: {text_features.shape}")
+
+
 if __name__ == '__main__':
-    check_clip()
+    check_clip_model()
