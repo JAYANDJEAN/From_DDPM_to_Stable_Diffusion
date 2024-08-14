@@ -85,7 +85,7 @@
 1. Attempt to train a small-scale Stable Diffusion model on hardware with only one 16GB RTX-4080 GPU.
 2. Method 1: Downscale all 512x512 images to 64x64 and train directly in the image space. The regenerated images are
    shown below. While the results are not perfect, at least dogs look like dogs and cats look like cats.
-    1. ![](00_assets/image/animal_faces_generated_method1.png)
+    1. ![](00_assets/image/animal_faces_direct_gen.png)
 3. Method 2: Convert the images to the latent space using VQVAE. Since the code is basically the same as in Method 1, I
    did not rerun it.
 
