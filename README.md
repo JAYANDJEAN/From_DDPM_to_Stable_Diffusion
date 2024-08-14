@@ -75,8 +75,12 @@
    distance between non-matching pairs, enabling it to associate images with their corresponding descriptive texts
    within the same semantic space. CLIP is composed of two main components: a Transformer Encoder for text and a Vision
    Transformer for images.
-2. References:
-    1. https://huggingface.co/google/siglip-so400m-patch14-384
+2. SigLIP is CLIP, a multimodal model, with a better loss function. The sigmoid loss operates solely on image-text pairs
+   and does not require a global view of the pairwise similarities for normalization. This allows further scaling up the
+   batch size, while also performing better at smaller batch sizes.
+3. References:
+    1. https://github.com/openai/CLIP
+    2. https://huggingface.co/google/siglip-so400m-patch14-384
 
 ## DDPM
 
