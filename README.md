@@ -103,8 +103,15 @@
 
 ## Multimodal
 
-1. https://www.youtube.com/watch?v=vAmKB7iPkWw
-2. https://github.com/hkproj/pytorch-paligemma
-3. https://huggingface.co/openbmb
-4. https://openai.com/index/gpt-4v-system-card/
-5. https://huggingface.co/google/paligemma-3b-pt-224
+1. PaliGemma: PaliGemma is the composition of a Transformer decoder and a Vision Transformer image encoder, with a total
+   of 3 billion params. The text decoder is initialized from Gemma-2B. The image encoder is initialized from
+   SigLIP-So400m/14. PaliGemma is trained following the PaLI-3 recipes.
+2. MiniCPM: MiniCPM-V 2.6 is the latest and most capable model in the MiniCPM-V series. The model is built on
+   SigLip-400M and
+   Qwen2-7B with a total of 8B parameters.
+3. References:
+    1. https://openai.com/index/gpt-4v-system-card/
+    2. https://www.youtube.com/watch?v=vAmKB7iPkWw
+    3. https://github.com/hkproj/pytorch-paligemma
+    4. https://huggingface.co/google/paligemma-3b-pt-224
+    5. https://huggingface.co/openbmb/MiniCPM-V-2_6
