@@ -70,9 +70,13 @@
 
 ## CLIP
 
-1. 121
+1. CLIP (Contrastive Language-Image Pretraining) is a multimodal model trained on a large dataset of image-text pairs
+   using contrastive learning. The model's goal is to minimize the distance between matching pairs and maximize the
+   distance between non-matching pairs, enabling it to associate images with their corresponding descriptive texts
+   within the same semantic space. CLIP is composed of two main components: a Transformer Encoder for text and a Vision
+   Transformer for images.
 2. References:
-   1. https://huggingface.co/google/siglip-so400m-patch14-384
+    1. https://huggingface.co/google/siglip-so400m-patch14-384
 
 ## DDPM
 
