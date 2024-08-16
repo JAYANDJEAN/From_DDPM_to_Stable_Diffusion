@@ -51,7 +51,7 @@
 ## VAE
 
 1. The architecture diagram of VQ-VAE is as follows:
-   1. ![](00_assets/image/vq-vae.png)
+    1. ![](00_assets/image/vq-vae.png)
 2. The results of VQ-VAE are shown below. The first row is the original images, and the second row is the
    reconstructed images.
     1. ![](00_assets/image/animal_faces_vqvae.png)
@@ -66,7 +66,8 @@
 1. ViT (Vision Transformer) is a model that applies the Transformer architecture to computer vision tasks. Unlike
    traditional Convolutional Neural Networks (CNNs), ViT directly divides an image into fixed-size patches and flattens
    them into sequences, similar to word embeddings in natural language processing.
-2. References:
+2. ![](00_assets/image/vit.gif)
+3. References:
     1. https://github.com/lucidrains/vit-pytorch
 
 ## CLIP
@@ -76,6 +77,7 @@
    distance between non-matching pairs, enabling it to associate images with their corresponding descriptive texts
    within the same semantic space. CLIP is composed of two main components: a Transformer Encoder for text and a Vision
    Transformer for images.
+   1. ![](00_assets/image/clip.png)
 2. SigLIP is CLIP, a multimodal model, with a better loss function. The sigmoid loss operates solely on image-text pairs
    and does not require a global view of the pairwise similarities for normalization. This allows further scaling up the
    batch size, while also performing better at smaller batch sizes.
