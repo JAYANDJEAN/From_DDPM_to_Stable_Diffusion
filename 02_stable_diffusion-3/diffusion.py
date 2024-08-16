@@ -210,6 +210,7 @@ class DismantledBlock(nn.Module):
     def pre_attention(self, x: Tensor, time_embeds: Tensor):
         # x could be latent or prompt_embeds
         assert x is not None, "pre_attention called with None input"
+        print(f"time_embeds in mmdit shape: {time_embeds.shape}")
         if not self.pre_only:
             if self.scale_mod_only:
                 shift_msa = None
@@ -218,6 +219,7 @@ class DismantledBlock(nn.Module):
             else:
                 shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = (
                     self.adaLN_modulation(time_embeds).chunk(6, dim=1))
+                print(f"shift_msa shape: {shift_msa.shape}")
             qkv = self.attn.pre_attention(modulate(self.norm1(x), shift_msa, scale_msa))
             return qkv, (x, gate_msa, shift_mlp, scale_mlp, gate_mlp)
         else:
@@ -271,12 +273,15 @@ class JointBlock(nn.Module):
         assert prompt_embeds is not None, "block_mixing called with None context"
         prompt_qkv, prompt_intermediates = self.prompt_block.pre_attention(prompt_embeds, time_embeds)
         latent_qkv, latent_intermediates = self.latent_block.pre_attention(latent, time_embeds)
+        print(f"prompt_q shape: {prompt_qkv[0].shape}")
+        print(f"latent_q shape: {latent_qkv[0].shape}")
 
         # cross part
         o = []
         for t in range(3):
             o.append(torch.cat((prompt_qkv[t], latent_qkv[t]), dim=1))
         q, k, v = tuple(o)
+        print(f"q after cat shape: {q.shape}")
 
         attn = attention(q, k, v, self.latent_block.attn.num_heads)
         prompt_attn, latent_attn = (attn[:, : prompt_qkv[0].shape[1]], attn[:, prompt_qkv[0].shape[1]:])
