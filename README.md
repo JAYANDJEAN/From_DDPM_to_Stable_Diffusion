@@ -77,7 +77,6 @@
    distance between non-matching pairs, enabling it to associate images with their corresponding descriptive texts
    within the same semantic space. CLIP is composed of two main components: a Transformer Encoder for text and a Vision
    Transformer for images.
-   1. ![](00_assets/image/clip.png)
 2. SigLIP is CLIP, a multimodal model, with a better loss function. The sigmoid loss operates solely on image-text pairs
    and does not require a global view of the pairwise similarities for normalization. This allows further scaling up the
    batch size, while also performing better at smaller batch sizes.
@@ -108,13 +107,15 @@
 
 1. PaliGemma: PaliGemma is the composition of a Transformer decoder and a Vision Transformer image encoder, with a total
    of 3 billion params. The text decoder is initialized from Gemma-2B. The image encoder is initialized from
-   SigLIP-So400m/14. PaliGemma is trained following the PaLI-3 recipes.
+   SigLIP-So400m/14. PaliGemma is trained following the PaLI-3 recipes. The model architecture is also very simple; it
+   just involves concatenation.
+    1. ![](00_assets/image/paligemma_arch.png)
 2. MiniCPM: MiniCPM-V 2.6 is the latest and most capable model in the MiniCPM-V series. The model is built on
-   SigLip-400M and
-   Qwen2-7B with a total of 8B parameters.
+   SigLip-400M and Qwen2-7B with a total of 8B parameters.
 3. References:
     1. https://openai.com/index/gpt-4v-system-card/
     2. https://www.youtube.com/watch?v=vAmKB7iPkWw
     3. https://github.com/hkproj/pytorch-paligemma
     4. https://huggingface.co/google/paligemma-3b-pt-224
-    5. https://huggingface.co/openbmb/MiniCPM-V-2_6
+    5. https://huggingface.co/blog/zh/paligemma
+    6. https://huggingface.co/openbmb/MiniCPM-V-2_6

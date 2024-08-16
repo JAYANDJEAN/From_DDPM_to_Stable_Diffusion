@@ -83,7 +83,7 @@ def train(config: Dict):
               f"time: {(end_time - start_time):.3f}s, "
               f"current_lr: {current_lr:.4f}, config_lr: {config['lr']:.4f}")
 
-        # scheduler.step()
+        scheduler.step()
 
         if train_loss < min_train_loss:
             min_train_loss = train_loss
