@@ -51,7 +51,7 @@
 ## VAE
 
 1. The architecture diagram of VQ-VAE is as follows:
-   1. ![](00_assets/image/vqvae.png)
+   1. ![](00_assets/image/vq-vae.png)
 2. The results of VQ-VAE are shown below. The first row is the original images, and the second row is the
    reconstructed images.
     1. ![](00_assets/image/animal_faces_vqvae.png)
