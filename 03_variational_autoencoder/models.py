@@ -166,10 +166,12 @@ class VectorQuantizer(nn.Module):
         device = latents.device
         encoding_one_hot = torch.zeros(encoding_index.size(0), self.K, device=device)
         encoding_one_hot.scatter_(1, encoding_index, 1)  # [BHW x K]
+        print(encoding_one_hot)
 
         # Quantize the latents
         quantized_latents = torch.matmul(encoding_one_hot, self.embedding.weight)  # [BHW, D]
         quantized_latents = quantized_latents.view(latents_shape)  # [B x H x W x D]
+        print(quantized_latents)
 
         # Compute the VQ Losses
         commitment_loss = F.mse_loss(quantized_latents.detach(), latents)

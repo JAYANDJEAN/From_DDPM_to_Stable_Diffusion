@@ -50,8 +50,9 @@
 
 ## VAE
 
-1. Explore various VAE variants and train a VQVAE using the animal-faces dataset.
-2. The results of VQVAE are shown below. The first row is the original images, and the second row is the
+1. The architecture diagram of VQ-VAE is as follows:
+   1. ![](00_assets/image/vqvae.png)
+2. The results of VQ-VAE are shown below. The first row is the original images, and the second row is the
    reconstructed images.
     1. ![](00_assets/image/animal_faces_vqvae.png)
 3. The results of [sdxl-vae](https://huggingface.co/stabilityai/sdxl-vae) are shown below.

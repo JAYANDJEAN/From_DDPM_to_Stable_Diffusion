@@ -59,21 +59,10 @@ def check_vanilla_vae():
 def check_vqvae():
     batch_size = 7
     vqvae = VQVAE(in_channels=3, img_size=512, embedding_dim=4, num_embeddings=128, hidden_dims=[32, 64, 128])
-    vqvae.load_state_dict(torch.load("../00_assets/model_vae/vqvae.pth", map_location="cpu"), strict=False)
 
-    dataloader = animal_faces_loader('train', batch_size, 512)
-    _, batch_image = next(enumerate(dataloader))
-    images = batch_image[0]
-    latent = vqvae.encode(images)[0]
-    reconstruction = vqvae.decode(latent)
-
-    result = torch.cat((images, reconstruction), dim=0)
-    result = transforms.Resize((128, 128))(result)
-
-    save_image(tensor=denormalize(result),
-               fp=f'../00_assets/image/vae_raw_recons.png',
-               nrow=batch_size,
-               padding=0)
+    x = torch.randn((2, 3, 512, 512))
+    latent = vqvae.encode(x)
+    print(latent[0].shape)
 
 
 if __name__ == '__main__':
