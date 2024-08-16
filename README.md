@@ -119,3 +119,10 @@
     4. https://huggingface.co/google/paligemma-3b-pt-224
     5. https://huggingface.co/blog/zh/paligemma
     6. https://huggingface.co/openbmb/MiniCPM-V-2_6
+
+## Video
+
+1. 32121
+2. References:
+   1. https://arxiv.org/abs/2408.06072
+   2. https://huggingface.co/THUDM/CogVideoX-2b
