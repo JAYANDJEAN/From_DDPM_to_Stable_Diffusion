@@ -34,6 +34,7 @@ def sample_euler(model, x, sigmas, extra_args=None):
     """Implements Algorithm 2 (Euler steps) from Karras et al. (2022)."""
     extra_args = {} if extra_args is None else extra_args
     s_in = x.new_ones([x.shape[0]])
+    res = []
     print("sample_euler")
     print(f"s_in: {s_in}, shape: {s_in.shape}")
     for i in range(len(sigmas) - 1):
@@ -44,7 +45,8 @@ def sample_euler(model, x, sigmas, extra_args=None):
         dt = sigmas[i + 1] - sigma_hat
         # Euler method
         x = x + d * dt
-    return x
+        res.append(x)
+    return res
 
 
 def Normalize(in_channels, num_groups=32, dtype=torch.float32, device=None):

@@ -181,7 +181,7 @@ class ClipG:
             "num_attention_heads": 20,
             "num_hidden_layers": 32
         }
-        with safe_open("..00_assets/model_sd3/clip_g.safetensors", framework="pt", device="cpu") as f:
+        with safe_open("../00_assets/model_sd3/clip_g.safetensors", framework="pt", device="cpu") as f:
             self.model = SDXLClipG(CLIPG_CONFIG, device="cpu", dtype=torch.float32)
             load_into(f, self.model.transformer, "", "cpu", torch.float32)
 
@@ -318,7 +318,7 @@ class SD3Inferencer:
         cond, pooled = (cond[0].half().cuda(), cond[1].half().cuda())
         return {"c_crossattn": cond, "y": pooled}
 
-    def do_sampling(self, latent, seed, conditioning, neg_cond, steps, cfg_scale, denoise=1.0) -> torch.Tensor:
+    def do_sampling(self, latent, seed, conditioning, neg_cond, steps, cfg_scale, denoise=1.0):
         print('-' * 70)
         print("Step 2: Sampling Loop...")
         latent = latent.half().cuda()
@@ -336,15 +336,15 @@ class SD3Inferencer:
         noise_scaled = self.sd3.model.model_sampling.noise_scaling(sigmas[0], noise, latent, self.max_denoise(sigmas))
         print(f"noise_scaled latent shape: {noise_scaled.shape}")
         # noise_scaled latent shape: torch.Size([1, 16, 128, 128])
-        latent = sample_euler(CFGDenoiser(self.sd3.model), noise_scaled, sigmas, extra_args=extra_args)
-        print(f"latent out of diffusion model: {latent.shape}")
+        latents = sample_euler(CFGDenoiser(self.sd3.model), noise_scaled, sigmas, extra_args=extra_args)
+        print(f"latent out of diffusion model: {latents[0].shape}")
         # latent out of diffusion model: torch.Size([1, 16, 128, 128])
-        latent = SD3LatentFormat().process_out(latent)
-        print(f"latent format: {latent.shape}")
+        latents = [SD3LatentFormat().process_out(latent) for latent in latents]
+        print(f"latent format: {latent[0].shape}")
         # latent format: torch.Size([1, 16, 128, 128])
         self.sd3.model = self.sd3.model.cpu()
         print("Sampling done")
-        return latent
+        return latents
 
     def vae_encode(self, image) -> torch.Tensor:
         print("Encoding image to latent...")
@@ -395,9 +395,11 @@ class SD3Inferencer:
             latent = SD3LatentFormat().process_in(latent)
         conditioning = self.get_cond(prompt)
         neg_cond = self.get_cond("")
-        sampled_latent = self.do_sampling(latent, seed, conditioning, neg_cond, steps, cfg_scale,
-                                          denoise if init_image else 1.0)
-        image = self.vae_decode(sampled_latent)
-        image.save(output)
+        sampled_latents = self.do_sampling(latent, seed, conditioning, neg_cond, steps, cfg_scale,
+                                           denoise if init_image else 1.0)
+        for i, latent in enumerate(sampled_latents):
+            image = self.vae_decode(latent)
+            print(i)
+            image.save(f"{output}_{i:02}.png")
         print("\n" + '-' * 90)
         print("Done!!!!!!!!!!!")

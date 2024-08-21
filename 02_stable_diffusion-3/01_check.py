@@ -21,7 +21,7 @@ def demo():
     # If init_image is given, this is the percentage of denoising steps to run
     # (1.0 = full denoise, 0.0 = no denoise at all)
     DENOISE = 0.6
-    OUTPUT = "../00_assets/image/sd3_output.png"
+    OUTPUT = "../00_assets/image/sd3_output"
 
     infer = SD3Inferencer()
     infer.load(SHIFT)
@@ -63,4 +63,4 @@ if __name__ == '__main__':
     hidden_size = 1536  # 64 * 24
     prompt_dim = 4096
     batch_size = 1
-    check_diffusion()
+    demo()
