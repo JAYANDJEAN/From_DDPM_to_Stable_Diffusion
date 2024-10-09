@@ -84,15 +84,7 @@
     1. https://github.com/openai/CLIP
     2. https://huggingface.co/google/siglip-so400m-patch14-384
 
-## DDPM
 
-1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely
-   transformed into random noise. This process does not involve parameter learning; instead, the original image is
-   input, and the image at step t is computed using predetermined coefficients. The decoding process mainly involves
-   noise removal with UNet model, where noise is progressively reduced until the desired image is generated.
-    1. ![](00_assets/image/ddpm.png)
-2. References:
-    1. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
 
 ## Tiny Stable Diffusion
 
@@ -103,6 +95,16 @@
 3. Method 2: Convert the images to the latent space using VQVAE. Since the code is basically the same as in Method 1, I
    did not rerun it.
 
+### DDPM
+
+1. During the encoding process, noise is gradually added to the image, and after T steps, the image is completely
+   transformed into random noise. This process does not involve parameter learning; instead, the original image is
+   input, and the image at step t is computed using predetermined coefficients. The decoding process mainly involves
+   noise removal with UNet model, where noise is progressively reduced until the desired image is generated.
+    1. ![](00_assets/image/ddpm.png)
+2. References:
+    1. https://github.com/zoubohao/DenoisingDiffusionProbabilityModel-ddpm-
+
 ## Multimodal
 
 1. PaliGemma: PaliGemma is the composition of a Transformer decoder and a Vision Transformer image encoder, with a total
@@ -111,7 +113,8 @@
    just involves concatenation.
     1. ![](00_assets/image/paligemma_arch.png)
 2. MiniCPM: MiniCPM-V 2.6 is the latest and most capable model in the MiniCPM-V series. The model is built on
-   SigLip-400M and Qwen2-7B with a total of 8B parameters.
+   SigLip-400M and Qwen2-7B with a total of 8B parameters. Image-Text to Text Model.
+   1. ![demo](00_assets/image/demo.png)
 3. References:
     1. https://openai.com/index/gpt-4v-system-card/
     2. https://www.youtube.com/watch?v=vAmKB7iPkWw
@@ -122,7 +125,7 @@
 
 ## Video
 
-1. 32121
+1. Text-to-Video or Image-to-Video
 2. References:
    1. https://arxiv.org/abs/2408.06072
    2. https://huggingface.co/THUDM/CogVideoX-2b
