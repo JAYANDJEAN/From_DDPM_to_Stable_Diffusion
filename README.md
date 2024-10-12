@@ -126,6 +126,8 @@
 ## Video
 
 1. Text-to-Video or Image-to-Video
-2. References:
-   1. https://arxiv.org/abs/2408.06072
-   2. https://huggingface.co/THUDM/CogVideoX-2b
+2. ![img.png](00_assets/videos.png)
+3. References:
+   1. https://arxiv.org/pdf/2410.05227
+   2. https://arxiv.org/abs/2408.06072
+   3. https://huggingface.co/THUDM/CogVideoX-2b
